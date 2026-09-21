@@ -100,6 +100,11 @@ try:
 except Exception:
     from translation_ollama import OllamaClient
 
+try:
+    from .translation_codex import CodexClient
+except Exception:
+    from translation_codex import CodexClient
+
 
 class Translator:
     """High-level translator facade.
@@ -126,6 +131,12 @@ class Translator:
         self.lmstudio_connected: bool = False
         self.ollama_client: Optional[Any] = None
         self.ollama_connected: bool = False
+        # Codex / ChatGPT。LMStudio/Ollama と同じ「疎通確認型」だが、
+        # クライアントはプロセス起動のたびに作り直さず使い回す — 内部に
+        # 実行ファイルの解決結果と同時実行セマフォを持っているため
+        # (項目17の「前回解決できたパス」/ 項目35)。
+        self.codex_client: Optional[Any] = None
+        self.codex_connected: bool = False
         self.ctranslate2_translator: Any = None
         self.ctranslate2_tokenizer: Any = None
         self.is_loaded_ctranslate2_model: bool = False
@@ -441,6 +452,98 @@ class Translator:
         """Update the Ollama client (fetch available models)."""
         self.ollama_client.updateClient()
 
+    def _ensureCodexClient(self, root_path: str = None) -> Any:
+        """Codex クライアントを1つだけ作って使い回す。
+
+        LMStudio/Ollama は接続確認のたびにクライアントを作り直しているが、
+        Codex のクライアントは実行ファイルの解決結果 (項目17) と同時実行
+        セマフォ (項目35) を抱えているため、作り直すとそれらが毎回リセット
+        される。接続確認が失敗しても破棄しないのは、未インストール →
+        インストール → ログイン と状態が進む間、同じインスタンスが
+        状態遷移を追えるようにするため。
+        """
+        if self.codex_client is None:
+            self.codex_client = CodexClient(root_path=root_path)
+        return self.codex_client
+
+    def getCodexConnected(self) -> bool:
+        """Get Codex (ChatGPT account) connection status."""
+        return self.codex_connected
+
+    def getCodexStatus(self, root_path: str = None) -> Any:
+        """Codex CLI の導入状況とログイン状態 (UI の状態A〜D 用、項目5)。
+
+        副作用は無い — 起動時にも呼ばれるため、ここでインストールしない
+        (項目7)。
+        """
+        client = self._ensureCodexClient(root_path=root_path)
+        status = client.probeInstallation()
+        self.codex_connected = status.connected
+        return status
+
+    def checkCodexClient(self, root_path: str = None) -> bool:
+        """Check if Codex CLI is installed and signed in with a ChatGPT account.
+
+        Returns True only for ChatGPT-account auth: API key auth is rejected
+        so this engine never silently falls back to API billing (項目24/25).
+        """
+        client = self._ensureCodexClient(root_path=root_path)
+        self.codex_connected = client.checkConnection()
+        return self.codex_connected
+
+    def installCodexCLI(self, root_path: str = None) -> Any:
+        """Install the official Codex CLI (and Node.js LTS if required).
+
+        Only ever called from an explicit user action (項目7).
+
+        Raises:
+            CodexInstallError: 段階つきの失敗。呼び出し側が UI 文言へ変換する。
+        """
+        client = self._ensureCodexClient(root_path=root_path)
+        return client.install()
+
+    def loginCodexChatGPT(self, root_path: str = None) -> bool:
+        """Run the official `codex login` flow and re-check the result.
+
+        Returns True on success, False on failure.
+        """
+        client = self._ensureCodexClient(root_path=root_path)
+        self.codex_connected = client.login()
+        return self.codex_connected
+
+    def logoutCodexChatGPT(self, root_path: str = None) -> bool:
+        """Run the official `codex logout`.
+
+        Returns True on success, False on failure.
+        """
+        client = self._ensureCodexClient(root_path=root_path)
+        result = client.logout()
+        self.codex_connected = client.getStatus().connected
+        return result
+
+    def getCodexModelList(self) -> list[str]:
+        """Get selectable Codex models.
+
+        Returns a list of model names, or an empty list on failure.
+        """
+        if self.codex_client is None:
+            return []
+        return self.codex_client.getModelList()
+
+    def setCodexModel(self, model: str) -> bool:
+        """Change the Codex model used for translation.
+
+        Returns True on success, False on failure.
+        """
+        if self.codex_client is None:
+            return False
+        return self.codex_client.setModel(model)
+
+    def updateCodexClient(self) -> None:
+        """Update the Codex client (re-probe installation and login state)."""
+        if self.codex_client is not None:
+            self.codex_client.updateClient()
+
     def changeCTranslate2Model(self, path: str, model_type: str, device: str = "cpu", device_index: int = 0, compute_type: str = "auto") -> None:
         """Load a CTranslate2 model from weights.
 
@@ -628,6 +731,17 @@ class Translator:
                         if context_history:
                             self.ollama_client.setContextHistory(context_history)
                         result = self.ollama_client.translate(
+                            message,
+                            input_lang=source_language,
+                            output_lang=target_language,
+                        )
+                case "Codex_CLI":
+                    if self.codex_client is None:
+                        result = False
+                    else:
+                        if context_history:
+                            self.codex_client.setContextHistory(context_history)
+                        result = self.codex_client.translate(
                             message,
                             input_lang=source_language,
                             output_lang=target_language,

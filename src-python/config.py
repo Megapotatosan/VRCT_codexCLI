@@ -809,6 +809,11 @@ class Config:
     SELECTABLE_LMSTUDIO_MODEL_LIST = ManagedProperty('SELECTABLE_LMSTUDIO_MODEL_LIST', type_=list, serialize=False, mutable_tracking=True)
     SELECTABLE_OPENAI_COMPATIBLE_MODEL_LIST = ManagedProperty('SELECTABLE_OPENAI_COMPATIBLE_MODEL_LIST', type_=list, serialize=False, mutable_tracking=True)
     SELECTABLE_OLLAMA_MODEL_LIST = ManagedProperty('SELECTABLE_OLLAMA_MODEL_LIST', type_=list, serialize=False, mutable_tracking=True)
+    # Codex は利用可能なモデルを機械可読に列挙する安定した手段が無いため、
+    # 中身は実質 ["Automatic"] の1件だけ (項目40)。それでもリストとして持つのは
+    # CONNECTION_PROVIDER_REGISTRY の共通実装 (モデル一覧が空 = 接続失敗) に
+    # そのまま乗るため。
+    SELECTABLE_CODEX_MODEL_LIST = ManagedProperty('SELECTABLE_CODEX_MODEL_LIST', type_=list, serialize=False, mutable_tracking=True)
     SELECTABLE_GROQ_WHISPER_MODEL_LIST = ManagedProperty('SELECTABLE_GROQ_WHISPER_MODEL_LIST', type_=list, serialize=False, mutable_tracking=True)
     SELECTABLE_OPENAI_WHISPER_MODEL_LIST = ManagedProperty('SELECTABLE_OPENAI_WHISPER_MODEL_LIST', type_=list, serialize=False, mutable_tracking=True)
     SELECTABLE_CUSTOM_WHISPER_MODEL_LIST = ManagedProperty('SELECTABLE_CUSTOM_WHISPER_MODEL_LIST', type_=list, serialize=False, mutable_tracking=True)
@@ -975,6 +980,7 @@ class Config:
     SELECTED_LMSTUDIO_MODEL = ManagedProperty('SELECTED_LMSTUDIO_MODEL', type_=str, allowed=_allowed_in_populated('SELECTABLE_LMSTUDIO_MODEL_LIST'))
     SELECTED_OPENAI_COMPATIBLE_MODEL = ManagedProperty('SELECTED_OPENAI_COMPATIBLE_MODEL', type_=str, allowed=_allowed_in_populated('SELECTABLE_OPENAI_COMPATIBLE_MODEL_LIST'))
     SELECTED_OLLAMA_MODEL = ManagedProperty('SELECTED_OLLAMA_MODEL', type_=str, allowed=_allowed_in_populated('SELECTABLE_OLLAMA_MODEL_LIST'))
+    SELECTED_CODEX_MODEL = ManagedProperty('SELECTED_CODEX_MODEL', type_=str, allowed=_allowed_in_populated('SELECTABLE_CODEX_MODEL_LIST'))
     SELECTED_GROQ_WHISPER_MODEL = ManagedProperty('SELECTED_GROQ_WHISPER_MODEL', type_=str, allowed=_allowed_in_populated('SELECTABLE_GROQ_WHISPER_MODEL_LIST'))
     SELECTED_OPENAI_WHISPER_MODEL = ManagedProperty('SELECTED_OPENAI_WHISPER_MODEL', type_=str, allowed=_allowed_in_populated('SELECTABLE_OPENAI_WHISPER_MODEL_LIST'))
     SELECTED_CUSTOM_WHISPER_MODEL = ManagedProperty('SELECTED_CUSTOM_WHISPER_MODEL', type_=str, allowed=_allowed_in_populated('SELECTABLE_CUSTOM_WHISPER_MODEL_LIST'))
@@ -1078,6 +1084,7 @@ class Config:
         self._SELECTABLE_LMSTUDIO_MODEL_LIST = []
         self._SELECTABLE_OPENAI_COMPATIBLE_MODEL_LIST = []
         self._SELECTABLE_OLLAMA_MODEL_LIST = []
+        self._SELECTABLE_CODEX_MODEL_LIST = []
         self._SELECTABLE_GROQ_WHISPER_MODEL_LIST = []
         self._SELECTABLE_OPENAI_WHISPER_MODEL_LIST = []
         self._SELECTABLE_CUSTOM_WHISPER_MODEL_LIST = []
@@ -1212,6 +1219,7 @@ class Config:
         self._OPENAI_COMPATIBLE_URL = "https://api.openai.com/v1"
         self._SELECTED_OPENAI_COMPATIBLE_MODEL = None
         self._SELECTED_OLLAMA_MODEL = None
+        self._SELECTED_CODEX_MODEL = None
         self._SELECTED_GROQ_WHISPER_MODEL = None
         self._SELECTED_OPENAI_WHISPER_MODEL = None
         self._SELECTED_CUSTOM_WHISPER_MODEL = None
@@ -1392,6 +1400,7 @@ class Config:
             ('SELECTED_LMSTUDIO_MODEL', 'SELECTABLE_LMSTUDIO_MODEL_LIST'),
             ('SELECTED_OPENAI_COMPATIBLE_MODEL', 'SELECTABLE_OPENAI_COMPATIBLE_MODEL_LIST'),
             ('SELECTED_OLLAMA_MODEL', 'SELECTABLE_OLLAMA_MODEL_LIST'),
+            ('SELECTED_CODEX_MODEL', 'SELECTABLE_CODEX_MODEL_LIST'),
             ('SELECTED_GROQ_WHISPER_MODEL', 'SELECTABLE_GROQ_WHISPER_MODEL_LIST'),
             ('SELECTED_OPENAI_WHISPER_MODEL', 'SELECTABLE_OPENAI_WHISPER_MODEL_LIST'),
             ('SELECTED_CUSTOM_WHISPER_MODEL', 'SELECTABLE_CUSTOM_WHISPER_MODEL_LIST'),

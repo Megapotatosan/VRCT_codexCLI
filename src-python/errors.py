@@ -140,6 +140,7 @@ class ErrorCode(str, Enum):
     MODEL_OPENROUTER_INVALID = "MODEL_OPENROUTER_INVALID"
     MODEL_LMSTUDIO_INVALID = "MODEL_LMSTUDIO_INVALID"
     MODEL_OLLAMA_INVALID = "MODEL_OLLAMA_INVALID"
+    MODEL_CODEX_INVALID = "MODEL_CODEX_INVALID"
     # Groq/OpenAI/カスタムサーバーの文字起こしモデルは全て
     # OpenAICompatibleTranscriptionProvider の1実装を共有するため、翻訳側の
     # ようにエンジンごとのコードを分けず1つにまとめる (エラーコード追加は
@@ -151,6 +152,23 @@ class ErrorCode(str, Enum):
     # ============================================================================
     CONNECTION_LMSTUDIO_FAILED = "CONNECTION_LMSTUDIO_FAILED"
     CONNECTION_OLLAMA_FAILED = "CONNECTION_OLLAMA_FAILED"
+    # Codex / ChatGPT (Codex_CLI)。「繋がらない」の中身が LMStudio/Ollama より
+    # 多段 (未インストール / 未ログイン / APIキーでログインしている) なので、
+    # UI が出し分けられるよう接続失敗を3つに割っている (項目5の状態A〜D)。
+    CONNECTION_CODEX_FAILED = "CONNECTION_CODEX_FAILED"
+    CONNECTION_CODEX_NOT_INSTALLED = "CONNECTION_CODEX_NOT_INSTALLED"
+    CONNECTION_CODEX_NOT_LOGGED_IN = "CONNECTION_CODEX_NOT_LOGGED_IN"
+    # ChatGPT ログインのつもりが APIキーログインだった場合 (項目24/25)。
+    # そのまま使うと課金先が ChatGPT サブスクから API 従量課金に変わるため、
+    # 成功扱いにせず専用のコードで弾く。
+    CONNECTION_CODEX_API_KEY_AUTH = "CONNECTION_CODEX_API_KEY_AUTH"
+    # インストール経路の失敗 (項目20)。stdout/stderr/exit code は debug log に
+    # 残し、UI にはこのコードに対応する短い文言だけを出す。
+    CODEX_INSTALL_FAILED = "CODEX_INSTALL_FAILED"
+    CODEX_INSTALL_WINGET_MISSING = "CODEX_INSTALL_WINGET_MISSING"
+    CODEX_INSTALL_NODE_FAILED = "CODEX_INSTALL_NODE_FAILED"
+    CODEX_INSTALL_NPM_MISSING = "CODEX_INSTALL_NPM_MISSING"
+    CODEX_LOGIN_FAILED = "CODEX_LOGIN_FAILED"
     CONNECTION_LMSTUDIO_URL_INVALID = "CONNECTION_LMSTUDIO_URL_INVALID"
     CONNECTION_OPENAI_COMPATIBLE_URL_INVALID = "CONNECTION_OPENAI_COMPATIBLE_URL_INVALID"
     CONNECTION_TRANSCRIPTION_CUSTOM_URL_INVALID = "CONNECTION_TRANSCRIPTION_CUSTOM_URL_INVALID"
@@ -610,6 +628,12 @@ ERROR_METADATA: Dict[ErrorCode, Dict[str, Any]] = {
         "severity": "warning",
         "user_action_required": True,
     },
+    ErrorCode.MODEL_CODEX_INVALID: {
+        "category": ErrorCategory.MODEL,
+        "message": "Codex model is not valid",
+        "severity": "warning",
+        "user_action_required": True,
+    },
     ErrorCode.MODEL_TRANSCRIPTION_INVALID: {
         "category": ErrorCategory.MODEL,
         "message": "Transcription API model is not valid",
@@ -627,6 +651,60 @@ ERROR_METADATA: Dict[ErrorCode, Dict[str, Any]] = {
     ErrorCode.CONNECTION_OLLAMA_FAILED: {
         "category": ErrorCategory.CONNECTION,
         "message": "Cannot connect to ollama server",
+        "severity": "error",
+        "user_action_required": True,
+    },
+    ErrorCode.CONNECTION_CODEX_FAILED: {
+        "category": ErrorCategory.CONNECTION,
+        "message": "Cannot connect to Codex CLI",
+        "severity": "error",
+        "user_action_required": True,
+    },
+    ErrorCode.CONNECTION_CODEX_NOT_INSTALLED: {
+        "category": ErrorCategory.CONNECTION,
+        "message": "Codex CLI is not installed",
+        "severity": "error",
+        "user_action_required": True,
+    },
+    ErrorCode.CONNECTION_CODEX_NOT_LOGGED_IN: {
+        "category": ErrorCategory.CONNECTION,
+        "message": "Codex CLI is not connected to a ChatGPT account",
+        "severity": "error",
+        "user_action_required": True,
+    },
+    ErrorCode.CONNECTION_CODEX_API_KEY_AUTH: {
+        "category": ErrorCategory.CONNECTION,
+        "message": "Codex CLI is signed in with an API key. Sign in with a ChatGPT account to use this engine",
+        "severity": "error",
+        "user_action_required": True,
+    },
+    ErrorCode.CODEX_INSTALL_FAILED: {
+        "category": ErrorCategory.CONNECTION,
+        "message": "Failed to install Codex CLI",
+        "severity": "error",
+        "user_action_required": True,
+    },
+    ErrorCode.CODEX_INSTALL_WINGET_MISSING: {
+        "category": ErrorCategory.CONNECTION,
+        "message": "Automatic installation requires Windows App Installer",
+        "severity": "error",
+        "user_action_required": True,
+    },
+    ErrorCode.CODEX_INSTALL_NODE_FAILED: {
+        "category": ErrorCategory.CONNECTION,
+        "message": "Failed to install the required Node.js runtime",
+        "severity": "error",
+        "user_action_required": True,
+    },
+    ErrorCode.CODEX_INSTALL_NPM_MISSING: {
+        "category": ErrorCategory.CONNECTION,
+        "message": "npm was not found after installing Node.js",
+        "severity": "error",
+        "user_action_required": True,
+    },
+    ErrorCode.CODEX_LOGIN_FAILED: {
+        "category": ErrorCategory.CONNECTION,
+        "message": "ChatGPT login did not complete",
         "severity": "error",
         "user_action_required": True,
     },

@@ -747,3 +747,16 @@ Groq_API:
 OpenRouter_API:
   source: *openai_langs
   target: *openai_langs
+
+# Codex / ChatGPT (ローカルの公式 Codex CLI 経由)。対応言語は OpenAI_API と
+# 同じ集合を使う (項目38) — 裏にいるのは同じ OpenAI のモデルなので、
+# ここだけ独自の集合を作る理由が無い。
+#
+# NOTE: 広東語は専用エントリを作っていない。UI の言語一覧は
+# `model.getListLanguageAndCountry()` で transcription_lang と積を取るため、
+# 文字起こし側に無い言語をここに足しても選択肢には出てこない (＝死んだ
+# エントリになる)。実運用では Chinese Traditional として通り、
+# prompt 側の「口語・スラングを保持する」指示で広東語のまま扱われる。
+Codex_CLI:
+  source: *openai_langs
+  target: *openai_langs

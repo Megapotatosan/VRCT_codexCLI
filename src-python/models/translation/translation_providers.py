@@ -235,4 +235,22 @@ CONNECTION_PROVIDER_REGISTRY: Dict[str, ConnectionEngineSpec] = {
         run_mapping_selectable_key="selectable_ollama_model_list",
         run_mapping_selected_key="selected_ollama_model",
     ),
+    # Codex / ChatGPT。接続先がローカルHTTPサーバーではなく公式 Codex CLI の
+    # サブプロセスである点だけが LMStudio/Ollama と違い、「認証キーを持たず、
+    # 繋がるかどうかを確認してモデル一覧を得る」という形状は同一なので、
+    # 専用の Provider 層を足さずにこのレジストリへ載せる (項目43)。
+    #
+    # `TRANSLATION_PROVIDER_REGISTRY` (認証キー型) に入れていないのは
+    # authentication mechanism が根本的に違うため (項目3/4): ChatGPT の
+    # credential は公式CLIが持ち、VRCT は一切保存しない。そのため
+    # `CodexClient` には `getAuthKey`/`setAuthKey` が無い (項目27)。
+    "Codex_CLI": ConnectionEngineSpec(
+        engine_key="Codex_CLI",
+        error_connection_failed=ErrorCode.CONNECTION_CODEX_FAILED,
+        error_model_invalid=ErrorCode.MODEL_CODEX_INVALID,
+        selectable_model_list_attr="SELECTABLE_CODEX_MODEL_LIST",
+        selected_model_attr="SELECTED_CODEX_MODEL",
+        run_mapping_selectable_key="selectable_codex_model_list",
+        run_mapping_selected_key="selected_codex_model",
+    ),
 }

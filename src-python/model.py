@@ -1211,6 +1211,50 @@ class Model:
         self.ensure_initialized()
         self.translator.updateOllamaClient()
 
+    def getTranslatorCodexConnected(self) -> bool:
+        self.ensure_initialized()
+        return self.translator.getCodexConnected()
+
+    def getTranslatorCodexStatus(self):
+        """Codex CLI の導入状況 + ChatGPT ログイン状態 (項目5)。
+
+        `ensure_initialized()` を呼ばないのは、UI が「Install Codex CLI」を
+        出すかどうかを判断するためだけに翻訳モデル一式のロードを
+        引き起こさないようにするため。この呼び出し自体は subprocess を
+        2回叩くだけで、VRCT の状態を何も変えない (項目7)。
+        """
+        return self.translator.getCodexStatus(root_path=config.PATH_LOCAL)
+
+    def authenticationTranslatorCodex(self) -> bool:
+        result = self.translator.checkCodexClient(root_path=config.PATH_LOCAL)
+        return result
+
+    def installTranslatorCodexCLI(self):
+        """ユーザーが明示的に押したときだけ呼ばれる (項目7)。
+
+        Raises:
+            CodexInstallError: controller 側が UI 文言へ変換する。
+        """
+        return self.translator.installCodexCLI(root_path=config.PATH_LOCAL)
+
+    def loginTranslatorCodexChatGPT(self) -> bool:
+        return self.translator.loginCodexChatGPT(root_path=config.PATH_LOCAL)
+
+    def logoutTranslatorCodexChatGPT(self) -> bool:
+        return self.translator.logoutCodexChatGPT(root_path=config.PATH_LOCAL)
+
+    def getTranslatorCodexModelList(self) -> list[str]:
+        self.ensure_initialized()
+        return self.translator.getCodexModelList()
+
+    def setTranslatorCodexModel(self, model: str) -> bool:
+        self.ensure_initialized()
+        return self.translator.setCodexModel(model=model)
+
+    def updateTranslatorCodexClient(self) -> None:
+        self.ensure_initialized()
+        self.translator.updateCodexClient()
+
     def startLogger(self):
         self.ensure_initialized()
         os_makedirs(config.PATH_LOGS, exist_ok=True)
