@@ -419,7 +419,7 @@ config_page:
         error_in_use: "“{{action_name}}”的快捷键（{{hotkey}}）已在其他位置使用，无法注册。"
         error_failed_to_register_at_launch: "“{{action_name}}”的快捷键（{{hotkey}}）正被其他应用程序使用，无法启用。"
         toggle_vrct_visibility:
-            label: "切换 VRCT 最小化/激活"
+            label: "切换 VRCT_codexCLI 最小化/激活"
         toggle_translation:
             label: "切换「{{translation}}」开/关"
         toggle_transcription_send:

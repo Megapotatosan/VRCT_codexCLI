@@ -327,7 +327,7 @@ config_page:
             desc: "自動將對話訊息匯出為文字文件。"
         vrc_mic_mute_sync:
             label: "VRC 麥克風靜音同步"
-            desc: "當 VRChat 的麥克風靜音時，VRCT 將不會向 VRChat 發送訊息。\n*存在一些延遲且不支援按鍵發話 (PTT)。"
+            desc: "當 VRChat 的麥克風靜音時，VRCT_codexCLI 將不會向 VRChat 發送訊息。\n*存在一些延遲且不支援按鍵發話 (PTT)。"
         send_message_to_vrc:
             label: "發送訊息到 VRChat"
             desc: "當你打算向 VRChat 發送訊息時啟用此功能。"
@@ -419,7 +419,7 @@ config_page:
         error_in_use: "「{{action_name}}」的快捷鍵（{{hotkey}}）已在其他位置使用，無法註冊。"
         error_failed_to_register_at_launch: "「{{action_name}}」的快捷鍵（{{hotkey}}）正被其他應用程式使用，無法啟用。"
         toggle_vrct_visibility:
-            label: "切換 VRCT 最小化/啟動"
+            label: "切換 VRCT_codexCLI 最小化/啟動"
         toggle_translation:
             label: "切換「{{translation}}」開/關"
         toggle_transcription_send:

@@ -205,7 +205,7 @@ export const useReceiveRoutes = () => {
 
             case 500:
                 showNotification_Error(
-                    `An error occurred. Please restart VRCT or contact the developers. ${JSON.stringify(parsed_data.result)}`, { hide_duration: null });
+                    `An error occurred. Please restart VRCT_codexCLI or contact the developers. ${JSON.stringify(parsed_data.result)}`, { hide_duration: null });
                 break;
 
             default:

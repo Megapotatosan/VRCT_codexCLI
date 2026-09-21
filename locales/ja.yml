@@ -243,7 +243,7 @@ config_page:
             disconnect: "接続を解除"
             install: "インストール"
             cancel: "キャンセル"
-            install_confirm: "ChatGPT 翻訳を使うには Codex CLI が必要です。\nVRCT が公式の Codex CLI と、必要であれば Node.js LTS をインストールします。\n続行しますか？"
+            install_confirm: "ChatGPT 翻訳を使うには Codex CLI が必要です。\nVRCT_codexCLI が公式の Codex CLI と、必要であれば Node.js LTS をインストールします。\n続行しますか？"
             connection_required: "ChatGPT との接続が必要"
         select_codex_model:
             label: "Codex モデルを選択"
@@ -425,7 +425,7 @@ config_page:
         error_in_use: "「{{action_name}}」のホットキー（{{hotkey}}）は他で使用されているため登録できません。"
         error_failed_to_register_at_launch: "「{{action_name}}」のホットキー（{{hotkey}}）は他のアプリケーションで使用されているため利用できません。"
         toggle_vrct_visibility:
-            label: "VRCTの最小化/アクティブ化の切り替え"
+            label: "VRCT_codexCLIの最小化/アクティブ化の切り替え"
         toggle_translation:
             label: "「{{translation}}」 オン/オフの切り替え"
         toggle_transcription_send:

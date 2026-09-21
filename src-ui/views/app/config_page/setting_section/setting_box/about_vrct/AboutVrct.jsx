@@ -131,7 +131,7 @@ export const AboutVrct = () => {
             </div>
 
             <div className={styles.vrchat_disclaimer_section}>
-                <p className={styles.vrchat_disclaimer}>VRCT is not endorsed by VRChat and does not reflect the views or opinions of VRChat or anyone officially involved in producing or managing VRChat properties. VRChat and all associated properties are trademarks or registered trademarks of VRChat Inc. VRChat © VRChat Inc.</p>
+                <p className={styles.vrchat_disclaimer}>VRCT_codexCLI is not endorsed by VRChat and does not reflect the views or opinions of VRChat or anyone officially involved in producing or managing VRChat properties. VRChat and all associated properties are trademarks or registered trademarks of VRChat Inc. VRChat © VRChat Inc.</p>
             </div>
 
 
@@ -157,7 +157,7 @@ const about_vrct_links = {
     project_link_booth: { img: project_link_booth, href: "https://misyaguziya.booth.pm/items/5155325" },
     project_link_documents: { img: project_link_documents, href: (lang) => generateLocalizedDocumentUrl(lang).vrct_document_home_url },
     project_link_vrct_github: { img: project_link_vrct_github, href: "https://github.com/misyaguziya/VRCT" },
-    project_link_contact_us: { img: project_link_contact_us, href: "https://docs.google.com/forms/d/e/1FAIpQLSei-xoydOY60ivXqhOjaTzNN8PiBQIDcNhzfy6cw2sjYkcg_g/viewform" },
+    project_link_contact_us: { img: project_link_contact_us, href: "https://github.com/Megapotatosan/VRCT_codexCLI/issues" },
 
     contributors_done_san_x: { img: contributors_x_icon, href: "https://twitter.com/done_vrc" },
     contributors_iya_x: { img: contributors_x_icon, href: "https://twitter.com/IYAA_HHHH" },

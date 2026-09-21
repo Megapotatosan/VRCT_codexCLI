@@ -13,7 +13,7 @@ import dev_github_icon from "@images/about_vrct/dev_github_icon.png";
 import document from "@images/document.png";
 
 const contacts_links = {
-    github_issues: { img: dev_github_icon, href: "https://github.com/misyaguziya/VRCT/issues" },
+    github_issues: { img: dev_github_icon, href: "https://github.com/Megapotatosan/VRCT_codexCLI/issues" },
     google_forms: { img: document, href: "https://docs.google.com/forms/d/e/1FAIpQLSei-xoydOY60ivXqhOjaTzNN8PiBQIDcNhzfy6cw2sjYkcg_g/viewform" },
 };
 

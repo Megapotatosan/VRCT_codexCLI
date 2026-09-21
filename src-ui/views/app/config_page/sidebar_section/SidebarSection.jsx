@@ -99,7 +99,7 @@ const Tab = (props) => {
     const getLabel = () => {
         if (props.tab_id === "vr") return "VR";
         if (props.tab_id === "supporters") return "Supporters";
-        if (props.tab_id === "about_vrct") return "About VRCT";
+        if (props.tab_id === "about_vrct") return "About VRCT_codexCLI";
         return t(`config_page.side_menu_labels.${props.tab_id}`);
     };
 

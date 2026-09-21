@@ -61,7 +61,7 @@ const useStartPython = () => {
     const { showNotification_Success, showNotification_Error } = useNotificationStatus();
 
     const asyncStartPython = async () => {
-        const command = Command.sidecar("bin/VRCT-sidecar");
+        const command = Command.sidecar("bin/VRCT_codexCLI-sidecar");
         command.on("error", error => console.error(`error: "${error}"`));
         command.stdout.on("data", (line) => {
             // Windows上のPython(CRLF)とTauriのread_line(\rまたは\nで区切る仕様)により、
@@ -90,7 +90,7 @@ const useStartPython = () => {
                 return;
             }
             showNotification_Error(
-                `An error occurred. Please restart VRCT or contact the developers. The last line:${JSON.stringify(line)}`, { hide_duration: null }
+                `An error occurred. Please restart VRCT_codexCLI or contact the developers. The last line:${JSON.stringify(line)}`, { hide_duration: null }
             );
             console.error("stderr", line);
         });
