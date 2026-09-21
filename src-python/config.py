@@ -1025,7 +1025,7 @@ class Config:
 
     def init_config(self):
         # Read Only
-        self._VERSION = "3.5.1-beta.1"
+        self._VERSION = "3.5.1-codex.1"
         if getattr(sys, 'frozen', False):
             self._PATH_LOCAL = os_path.dirname(sys.executable)
         else:
@@ -1319,7 +1319,11 @@ class Config:
         self._OBS_BROWSER_SOURCE_FONT_OUTLINE_THICKNESS = 3
         self._OBS_BROWSER_SOURCE_FONT_OUTLINE_COLOR = "#000000"
         self._ENABLE_CLIPBOARD = False
-        self._ENABLE_TELEMETRY = True
+        # このフォークはテレメトリの送信先を持たない (上流の Aptabase
+        # プロジェクトを使い続けるのは不適切なため削除した。
+        # models/telemetry/client.py 参照)。実際の送信は APP_KEY が無い時点で
+        # no-op になるが、設定値も既定 off にして UI の表示と実態を合わせる。
+        self._ENABLE_TELEMETRY = False
 
         # OCR defaults (VRChat chat-bubble text capture)
         self._ENABLE_OCR_CAPTURE = False

@@ -12,6 +12,11 @@ class TelemetryCore:
     def __init__(self, state: TelemetryState):
         self.state = state
         self.client = None
+        # 送信先の APP_KEY が無い場合はクライアントを作らない。このフォークは
+        # 既定でそうなっており (client.AptabaseWrapper 参照)、以降の
+        # start/stop/send_event は全て self.client is None で no-op になる。
+        if not AptabaseWrapper.APP_KEY:
+            return
         try:
             self.client = AptabaseWrapper()
         except Exception:

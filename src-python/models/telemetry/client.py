@@ -21,14 +21,19 @@ except ImportError:
 
 
 class AptabaseWrapper:
-    # stable/beta で別の Aptabase プロジェクトを使う。どちらを使うかは
-    # build_channel.BUILD_CHANNEL の1行だけで切り替える（マージ時の
-    # APP_KEY 取り違えを防ぐため）。
-    APP_KEYS = {
-        "stable": "A-US-3414271507",
-        "beta": "A-US-6044063021",
-    }
-    APP_KEY = APP_KEYS[BUILD_CHANNEL]
+    # このフォーク (VRCT_codexCLI) ではテレメトリを送らない。
+    #
+    # 上流はここに stable/beta それぞれの Aptabase APP_KEY を持っていたが、
+    # それは **上流の作者の分析プロジェクト** であり、フォークを配布したまま
+    # 残すと、こちらのユーザーの利用状況が、本人が同意していない第三者の
+    # アカウントへ、しかも上流のバージョンと見分けがつかない形で流れ込む。
+    # 上流の分析データを汚染することにもなる。
+    #
+    # フォーク自身の Aptabase プロジェクトを用意したくなったら、ここに
+    # {"stable": "...", "beta": "..."} を入れて APP_KEY を引き直せば、
+    # TelemetryCore 側は無変更で有効になる。
+    APP_KEYS: dict = {}
+    APP_KEY = APP_KEYS.get(BUILD_CHANNEL)
 
     def __init__(self):
         self.client = None

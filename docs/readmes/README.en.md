@@ -103,9 +103,7 @@ Everything about VRCT's own features (setup, transcription, OSC, overlays) lives
 
 ## Telemetry
 
-VRCT collects anonymous telemetry data via [Aptabase](https://aptabase.com) to help improve the app. The collected data includes app starts, session duration, and feature usage. No personally identifiable information is collected, and translated text is never sent.
-
-You can opt out of telemetry in the app settings at any time. See the [Aptabase Privacy Policy](https://aptabase.com/legal/privacy) for more details.
+**Disabled in this fork.** Upstream VRCT sends anonymous usage telemetry to [Aptabase](https://aptabase.com); those analytics projects belong to the original author, so shipping a fork with them in place would send your usage to a third party you never chose — and would pollute upstream's data with a build they don't control. The keys are removed here and telemetry is off by default, so nothing is sent.
 
 ## Thanks to VRCT's contributors
 
