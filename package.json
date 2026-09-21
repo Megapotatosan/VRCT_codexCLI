@@ -25,8 +25,8 @@
     "analyze-error": "node utils/analyze_ui_error.js",
     "build": "npm run task-kill && npm run clean && npm run update-version && npm run build-python && npm run vite-build && npm run tauri build",
     "build-cuda": "npm run task-kill && npm run clean && npm run update-version && npm run build-python-cuda && npm run vite-build && npm run tauri build",
-    "release": "npm run update-version && npm run build && python utils\\zip.py --zip_name VRCT.zip",
-    "release-cuda": "npm run update-version && npm run build-cuda && python utils\\zip.py --zip_name VRCT_cuda.zip",
+    "release": "npm run update-version && npm run build && python utils\\zip.py --zip_name VRCT_codexCLI.zip",
+    "release-cuda": "npm run update-version && npm run build-cuda && python utils\\zip.py --zip_name VRCT_codexCLI_cuda.zip",
     "release-all": "npm run update-version && npm run release && npm run release-cuda"
   },
   "dependencies": {

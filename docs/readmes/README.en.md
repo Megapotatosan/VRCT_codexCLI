@@ -90,6 +90,8 @@ Full details — architecture, timeouts, privacy, limitations: **[docs/codex_tra
 
 Grab the installer from [Releases](https://github.com/Megapotatosan/VRCT_codexCLI/releases) and run it.
 
+**This installs alongside upstream VRCT, not over it.** The app ships as `VRCT_codexCLI` with its own install directory, Start Menu entry, uninstall entry and binaries, so you can keep both and switch between them. Settings are not shared — each keeps its own `config.json` next to its own executable, so you'll configure this one from scratch.
+
 > **CPU version only.** The GPU/CUDA package is ~3.4GB, which exceeds GitHub's 2GB release-asset limit, so it is not distributed here. Use [upstream VRCT](https://github.com/misyaguziya/VRCT/releases) if you need the CUDA build.
 
 Building it yourself: [docs/readme_build.md](/docs/readme_build.md).

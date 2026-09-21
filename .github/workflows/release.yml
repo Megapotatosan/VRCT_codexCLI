@@ -3,11 +3,11 @@ name: Release VRCT_codexCLI
 # 上流 (misyaguziya/VRCT) との違い:
 #   - 配布先は Hugging Face ではなく、このリポジトリの GitHub Releases のみ。
 #     インストーラ (src-tauri/nsis/template.nsi) もここを見に来る。
-#   - CPU版のみをビルドする。GPU版 (VRCT_cuda.zip, 約3.4GB) は GitHub の
+#   - CPU版のみをビルドする。GPU版 (VRCT_codexCLI_cuda.zip, 約3.4GB) は GitHub の
 #     リリースアセット上限 2GB を超えるため publish できない。
 #
 # 添付するアセット名はインストーラ側の実装と結びついている。
-# VRCT.zip / VRCT.zip.sha256 の名前を変えると setup.exe が本体を
+# VRCT_codexCLI.zip / VRCT_codexCLI.zip.sha256 の名前を変えると setup.exe が本体を
 # ダウンロードできなくなる。
 
 on:
@@ -130,20 +130,20 @@ jobs:
         id: sha256
         shell: pwsh
         run: |
-          # インストーラは VRCT.zip の隣に置かれた .sha256 を先に取得して
+          # インストーラは VRCT_codexCLI.zip の隣に置かれた .sha256 を先に取得して
           # 展開前に検証する。名前と内容の形式 (小文字hexのみ) を変えないこと。
-          $exePath = "./src-tauri/target/release/bundle/nsis/VRCT_${{ env.VERSION }}_x64-setup.exe"
+          $exePath = "./src-tauri/target/release/bundle/nsis/VRCT_codexCLI_${{ env.VERSION }}_x64-setup.exe"
           $shaPath = "$exePath.sha256"
           $hash = (Get-FileHash -Path $exePath -Algorithm SHA256).Hash.ToLower()
           Set-Content -Path $shaPath -Value $hash -NoNewline -Encoding ascii
 
-          $cpuZipHash = (Get-FileHash -Path "./VRCT.zip" -Algorithm SHA256).Hash.ToLower()
-          Set-Content -Path "./VRCT.zip.sha256" -Value $cpuZipHash -NoNewline -Encoding ascii
+          $cpuZipHash = (Get-FileHash -Path "./VRCT_codexCLI.zip" -Algorithm SHA256).Hash.ToLower()
+          Set-Content -Path "./VRCT_codexCLI.zip.sha256" -Value $cpuZipHash -NoNewline -Encoding ascii
 
           # setup.exe は固定名でも添付する。VRCT 本体の Updater タブが
-          # /releases/latest/download/VRCT_setup.exe を決め打ちで取りに来る
+          # /releases/latest/download/VRCT_codexCLI_setup.exe を決め打ちで取りに来る
           # (config.SETUP_DOWNLOAD_URL)。
-          Copy-Item -Path $exePath -Destination "./VRCT_setup.exe"
+          Copy-Item -Path $exePath -Destination "./VRCT_codexCLI_setup.exe"
 
           echo "sha_path=$shaPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           echo "exe_path=$exePath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
@@ -158,8 +158,8 @@ jobs:
           files: |
             ${{ steps.sha256.outputs.exe_path }}
             ${{ steps.sha256.outputs.sha_path }}
-            VRCT_setup.exe
-            VRCT.zip
-            VRCT.zip.sha256
+            VRCT_codexCLI_setup.exe
+            VRCT_codexCLI.zip
+            VRCT_codexCLI.zip.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

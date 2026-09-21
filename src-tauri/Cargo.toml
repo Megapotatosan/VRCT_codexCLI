@@ -1,8 +1,8 @@
 [package]
-name = "VRCT"
+name = "VRCT_codexCLI"
 version = "0.0.0"
-description = "VRCT Application"
-authors = ["misyaguziya"]
+description = "VRCT_codexCLI Application"
+authors = ["misyaguziya", "Megapotatosan"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

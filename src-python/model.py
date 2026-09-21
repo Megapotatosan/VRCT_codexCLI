@@ -1896,7 +1896,7 @@ class Model:
     @staticmethod
     def _downloadSetup(expected_sha256: Optional[str] = None) -> bool:
         # try to download at most 5 times
-        program_name = "VRCT_setup.exe"
+        program_name = "VRCT_codexCLI_setup.exe"
         current_directory = config.PATH_LOCAL
         dest_path = os_path.join(current_directory, program_name)
         # minimum plausible size for a real NSIS installer; guards against
@@ -1948,7 +1948,7 @@ class Model:
         # ダウンロード & 検証する。updateSoftware()/updateCudaSoftware() の
         # 共通前処理。
         #
-        # 戻り値 True  : VRCT_setup.exe がディスク上にあり起動して問題ない
+        # 戻り値 True  : VRCT_codexCLI_setup.exe がディスク上にあり起動して問題ない
         # 戻り値 False : 呼び出し側は何も起動せず中止すること。内訳は
         #   - ダウンロード or ハッシュ検証に失敗した (_downloadSetup が False)
         #   - ".sha256" が公開されているのに取得できなかった
@@ -1983,7 +1983,7 @@ class Model:
         # custom "UI Language" page start on the user's chosen language;
         # carry over the current release channel so the installer's channel
         # page defaults to what the user already has selected in VRCT.
-        args = ["VRCT_setup.exe", "/EDITION=cpu", f"/UILANG={config.UI_LANGUAGE}", f"/CHANNEL={config.SELECTED_RELEASE_CHANNEL}"]
+        args = ["VRCT_codexCLI_setup.exe", "/EDITION=cpu", f"/UILANG={config.UI_LANGUAGE}", f"/CHANNEL={config.SELECTED_RELEASE_CHANNEL}"]
         if target_version:
             args.append(f"/VERSION={target_version}")
         Popen(args, cwd=config.PATH_LOCAL)
@@ -2001,7 +2001,7 @@ class Model:
         # custom "UI Language" page start on the user's chosen language;
         # carry over the current release channel so the installer's channel
         # page defaults to what the user already has selected in VRCT.
-        args = ["VRCT_setup.exe", "/EDITION=gpu", f"/UILANG={config.UI_LANGUAGE}", f"/CHANNEL={config.SELECTED_RELEASE_CHANNEL}"]
+        args = ["VRCT_codexCLI_setup.exe", "/EDITION=gpu", f"/UILANG={config.UI_LANGUAGE}", f"/CHANNEL={config.SELECTED_RELEASE_CHANNEL}"]
         if target_version:
             args.append(f"/VERSION={target_version}")
         Popen(args, cwd=config.PATH_LOCAL)

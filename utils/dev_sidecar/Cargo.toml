@@ -6,7 +6,7 @@ description = "Development-time sidecar wrapper for VRCT: launches the venv Pyth
 publish = false
 
 [[bin]]
-name = "VRCT-sidecar-x86_64-pc-windows-msvc"
+name = "VRCT_codexCLI-sidecar-x86_64-pc-windows-msvc"
 path = "src/main.rs"
 
 [profile.release]

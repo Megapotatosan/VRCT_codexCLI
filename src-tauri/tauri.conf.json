@@ -1,8 +1,8 @@
 {
     "$schema": "https://schema.tauri.app/config/2",
-    "productName": "VRCT",
+    "productName": "VRCT_codexCLI",
     "version": "3.5.1-codex.1",
-    "identifier": "com.vrct.app",
+    "identifier": "io.github.megapotatosan.vrct-codexcli",
     "build": {
         "beforeDevCommand": "",
         "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
         "enableGTKAppId": false,
         "windows": [
             {
-                "title": "VRCT",
+                "title": "VRCT_codexCLI",
                 "center": true,
                 "width": 450,
                 "height": 220,
@@ -35,10 +35,10 @@
     "bundle": {
         "active": true,
         "targets": "nsis",
-        "publisher": "m's software",
-        "copyright": "Copyright m's software",
+        "publisher": "Megapotatosan",
+        "copyright": "VRCT (c) 2023 misyaguziya, MIT. Fork: VRCT_codexCLI.",
         "licenseFile": "../LICENSE",
-        "shortDescription": "VRCT",
+        "shortDescription": "VRCT_codexCLI",
         "icon": [
             "icons/32x32.png",
             "icons/128x128.png",
@@ -47,7 +47,7 @@
             "icons/icon.ico"
         ],
         "externalBin": [
-            "bin/VRCT-sidecar"
+            "bin/VRCT_codexCLI-sidecar"
         ],
         "resources": {
             "bin/_internal": "_internal"

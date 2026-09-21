@@ -280,7 +280,7 @@ class TestModelUpdate(unittest.TestCase):
 
         popen.assert_called_once_with(
             [
-                "VRCT_setup.exe",
+                "VRCT_codexCLI_setup.exe",
                 "/EDITION=gpu",
                 f"/UILANG={config.UI_LANGUAGE}",
                 f"/CHANNEL={config.SELECTED_RELEASE_CHANNEL}",

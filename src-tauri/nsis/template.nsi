@@ -217,7 +217,7 @@ Function PageChooseEdition
     Pop $RadioGpuEdition
 
     ; このフォークは GitHub Releases だけで配布しており、GPU版
-    ; (VRCT_cuda.zip, 約3.4GB) は GitHub のリリースアセット上限 2GB を
+    ; (VRCT_codexCLI_cuda.zip, 約3.4GB) は GitHub のリリースアセット上限 2GB を
     ; 超えるため publish できない。選べてしまうと存在しないURLを取りに
     ; 行って必ずダウンロード失敗するので、選択肢自体を無効化する。
     ; CUDA を配りたくなったら、2GBを扱える配信先 (Hugging Face 等) を
@@ -742,8 +742,8 @@ Section Install
   ; GitHub では同一リポジトリの prerelease フラグで区別できるため
   ; リポジトリは1つで足りる。
   !define SOFTWARE_RELEASE_REPO "Megapotatosan/VRCT_codexCLI"
-  !define SOFTWARE_DOWNLOAD_FILENAME "VRCT.zip"
-  !define SOFTWARE_DOWNLOAD_FILENAME_GPU "VRCT_cuda.zip"
+  !define SOFTWARE_DOWNLOAD_FILENAME "VRCT_codexCLI.zip"
+  !define SOFTWARE_DOWNLOAD_FILENAME_GPU "VRCT_codexCLI_cuda.zip"
 
   ; Free-space budget (MiB) per edition. The compressed archive is written to
   ; %TEMP%, the extracted tree to $INSTDIR, and both exist at once during

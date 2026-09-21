@@ -716,7 +716,7 @@ class Config:
         GitHub の `/releases/latest` は prerelease を除外するので、ここは
         常に「最新の正式リリースの setup.exe」を指す。
         """
-        return f"https://github.com/{self._RELEASE_REPO}/releases/latest/download/VRCT_setup.exe"
+        return f"https://github.com/{self._RELEASE_REPO}/releases/latest/download/VRCT_codexCLI_setup.exe"
 
     def __new__(cls):
         if cls._instance is None:
