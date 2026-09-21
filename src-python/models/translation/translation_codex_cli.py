@@ -188,8 +188,21 @@ def _no_window_kwargs() -> dict:
     }
 
 
-def _run(argv: Sequence[str], timeout: float, env: Optional[dict] = None, cwd: Optional[str] = None) -> CommandResult:
+def _run(
+    argv: Sequence[str],
+    timeout: float,
+    env: Optional[dict] = None,
+    cwd: Optional[str] = None,
+    input_text: Optional[str] = None,
+) -> CommandResult:
     """argv は必ずリストで渡す。shell=True で文字列連結しない (項目10/13)。
+
+    `input_text` は子プロセスの stdin に流す。翻訳対象の本文のように
+    「内容を一切信用できない文字列」は argv ではなくこちらに載せること —
+    Windows で解決される codex 実行ファイルは `codex.cmd` (バッチ) であり、
+    バッチへの引数は CreateProcess から cmd.exe の引用規則を通るため、
+    `&` `|` `^` `%` `"` を含む文章が化けたり、最悪コマンドとして解釈されうる。
+    stdin に載せればこの経路を丸ごと回避できる。
 
     どんな失敗 (実行ファイル無し/権限/タイムアウト) でも例外を投げずに
     `CommandResult` を返す — 呼び出し側の分岐を1本化するため。
@@ -197,6 +210,7 @@ def _run(argv: Sequence[str], timeout: float, env: Optional[dict] = None, cwd: O
     try:
         completed = subprocess.run(
             list(argv),
+            input=input_text,
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -629,6 +643,12 @@ def exec_once(
         --sandbox read-only   : 翻訳にファイル書き込みもコマンド実行も要らない
         --cd <temp dir>       : ユーザーのファイルを作業対象にしない
         --output-last-message : イベントJSONLを解析せず最終メッセージだけ受け取る
+
+    prompt は argv ではなく **stdin** で渡す (末尾の `-` がその指定)。
+    翻訳対象は VRChat の発話や受信メッセージ、つまり内容を制御できない
+    文字列であり、Windows では実行ファイルが `codex.cmd` (バッチ) に
+    解決されるため、argv に載せると cmd.exe の引用規則を通ってしまう
+    (項目13「未処理の使用者入力を shell 経由で渡さない」)。
     """
     with tempfile.TemporaryDirectory(prefix="vrct_codex_") as workdir:
         output_path = os_path.join(workdir, "last_message.txt")
@@ -650,9 +670,16 @@ def exec_once(
 
         if model:
             argv += ["--model", model]
-        argv.append(prompt)
+        # `-` = 指示を stdin から読む。prompt 本文は argv に載せない。
+        argv.append("-")
 
-        result = _run(argv, timeout=timeout, env=subscription_environment(), cwd=workdir)
+        result = _run(
+            argv,
+            timeout=timeout,
+            env=subscription_environment(),
+            cwd=workdir,
+            input_text=prompt,
+        )
 
         raw = ""
         if _is_file(output_path):

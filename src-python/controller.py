@@ -3342,15 +3342,17 @@ class Controller:
             model.logoutTranslatorCodexChatGPT()
         except Exception:
             errorLogging()
-        response = self._failCodexConnection(ErrorCode.CONNECTION_CODEX_NOT_LOGGED_IN)
+        # config 側の後始末 (モデル一覧のクリア、エンジン一覧の再計算) は
+        # 接続失敗と同じものを使い回す。返り値のエラーレスポンスは捨てる —
+        # ログアウトは失敗ではなくユーザーが意図した操作なので、UI には
+        # 200 と「未接続」だけを返す。
+        self._failCodexConnection(ErrorCode.CONNECTION_CODEX_NOT_LOGGED_IN)
         try:
             status = model.getTranslatorCodexStatus()
             self.run(200, self.run_mapping["codex_status"], self._codexStatusPayload(status))
         except Exception:
             errorLogging()
-        # ログアウトは「失敗」ではなくユーザーの意図した操作なので 200 を返す。
-        # config 側の後始末だけ接続失敗と同じものを使い回している。
-        return {"status":200, "result":response["result"]}
+        return {"status":200, "result":False}
 
     def getTranslatorCodexModelList(self, *args, **kwargs) -> dict:
         return self._getTranslationEngineModelList("Codex_CLI")

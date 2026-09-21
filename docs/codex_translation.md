@@ -51,6 +51,12 @@ Each `codex exec` runs with `--ephemeral`, so the CLI writes no session
 files to disk, and with `--sandbox read-only` in a throwaway temporary
 directory, so it cannot read your project files or run commands.
 
+The text being translated is written to the CLI's **stdin**, never passed
+as a command-line argument. On Windows `codex` resolves to `codex.cmd`, a
+batch wrapper, and arguments to a batch file are re-parsed by `cmd.exe` —
+a VRChat message containing `&`, `|`, `^`, `%` or `"` could be mangled or
+interpreted. stdin avoids that path entirely.
+
 ## How it works
 
 ```

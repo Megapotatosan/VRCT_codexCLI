@@ -279,16 +279,33 @@ class CodexClient:
             )
 
             # `--output-schema` を解さない CLI では usage エラーで即死する。
-            # その場合だけ1度プレーンテキストで再試行し、以後はこの
-            # インスタンスで構造化出力を諦める (項目29: 複雑にしすぎない)。
-            if not result.ok and self.use_structured_output and not translation:
-                self.use_structured_output = False
-                translation, result = codex_cli.exec_once(
+            # その場合だけ1度プレーンテキストで再試行する (項目29)。
+            #
+            # timeout を除外しているのが肝: timeout は「schema 非対応」の
+            # 証拠にならないのに、ここで再試行すると翻訳1回に
+            # TIMEOUT_TRANSLATE_SEC の2倍かかり、その間セマフォを掴んだまま
+            # になる (項目36 で分けた timeout 予算が意味を失う)。
+            #
+            # フラグを落とすのは再試行が実際に成功したときだけ。ネットワーク
+            # 断など無関係な理由で1度失敗しただけで、以後ずっと構造化出力を
+            # 諦めてしまわないようにする。
+            if (
+                self.use_structured_output
+                and not result.ok
+                and not result.timed_out
+                and not translation
+            ):
+                retry_translation, retry_result = codex_cli.exec_once(
                     codex_path,
                     prompt,
                     model=None if self.model in (None, AUTOMATIC_MODEL) else self.model,
                     use_structured_output=False,
                 )
+                if retry_result.ok:
+                    # 複数スレッドから同時に書きうるが、同じ値への単純な
+                    # 代入なので競合しても結果は変わらない。
+                    self.use_structured_output = False
+                    translation, result = retry_translation, retry_result
 
         elapsed_ms = int((time.monotonic() - started) * 1000)
         self._warmed_up = True

@@ -182,6 +182,38 @@ class TestStructuredOutputFallback(unittest.TestCase):
             with self.assertRaises(codex_cli.CodexTranslationError):
                 client.translate("hello", "English", "Japanese")
 
+    def test_a_failed_retry_does_not_disable_structured_output(self) -> None:
+        """1度の無関係な失敗 (ネットワーク断など) で、以後ずっと構造化出力を
+        諦めてしまわないこと。"""
+        client = _connectedClient()
+        with patch.object(codex_cli, "exec_once",
+                          return_value=("", _result(returncode=1, stderr="network down"))):
+            with self.assertRaises(codex_cli.CodexTranslationError):
+                client.translate("hello", "English", "Japanese")
+        self.assertTrue(client.use_structured_output)
+
+    def test_timeout_does_not_trigger_the_fallback(self) -> None:
+        """timeout は「--output-schema 非対応」の証拠にならない。
+
+        ここで再試行すると翻訳1回に translation timeout の2倍かかり、その間
+        セマフォを掴んだままになる (項目36 で分けた timeout 予算が無意味に
+        なる)。
+        """
+        client = _connectedClient()
+        calls = []
+
+        def _exec(_path, _prompt, model=None, use_structured_output=True, **kwargs):
+            calls.append(use_structured_output)
+            return "", _result(returncode=-1, timed_out=True)
+
+        with patch.object(codex_cli, "exec_once", side_effect=_exec):
+            with self.assertRaises(codex_cli.CodexTranslationError) as ctx:
+                client.translate("hello", "English", "Japanese")
+
+        self.assertEqual(ctx.exception.outcome, "timeout")
+        self.assertEqual(calls, [True], "timeout で再試行してはいけない")
+        self.assertTrue(client.use_structured_output)
+
 
 class TestOutputParsing(unittest.TestCase):
     """`--output-last-message` の中身を翻訳文に落とす部分 (項目29)。"""
@@ -257,6 +289,26 @@ class TestExecArguments(unittest.TestCase):
     def test_an_explicit_model_is_forwarded(self) -> None:
         argv = self._argvFor(model="gpt-5.6")
         self.assertEqual(argv[argv.index("--model") + 1], "gpt-5.6")
+
+    def test_the_prompt_goes_through_stdin_not_argv(self) -> None:
+        """Windows で codex は `codex.cmd` (バッチ) に解決される。argv に
+        載せるとバッチへの引数が cmd.exe の引用規則を通るため、`&` や `|` を
+        含む発話が化けたりコマンドとして解釈されうる (項目13)。
+        """
+        hostile = 'hi & echo pwned | more ^ "quoted" %PATH%'
+        with patch.object(codex_cli, "_run", return_value=_result()) as mock_run:
+            codex_cli.exec_once("codex.cmd", hostile)
+
+        argv = mock_run.call_args[0][0]
+        self.assertEqual(argv[-1], "-", "stdin から読ませる指定 `-` が末尾に要る")
+        self.assertNotIn(hostile, argv)
+        self.assertEqual(mock_run.call_args.kwargs["input_text"], hostile)
+
+    def test_no_argument_contains_the_translated_text(self) -> None:
+        with patch.object(codex_cli, "_run", return_value=_result()) as mock_run:
+            codex_cli.exec_once("codex", "secret utterance")
+        joined = " ".join(mock_run.call_args[0][0])
+        self.assertNotIn("secret utterance", joined)
 
     def test_translation_timeout_is_its_own_budget(self) -> None:
         """翻訳・ログイン・インストールの timeout を混ぜない (項目36)。"""
