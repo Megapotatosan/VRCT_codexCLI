@@ -21,6 +21,13 @@ error.log
 *.ipynb
 VRCT.zip
 VRCT_cuda.zip
+# Renamed release artifacts (see utils/zip.py / package.json). Without these
+# the ~466MB package sits untracked-but-not-ignored and is easy to commit by
+# accident after a local `npm run release`.
+VRCT_codexCLI.zip
+VRCT_codexCLI_cuda.zip
+VRCT_codexCLI.zip.sha256
+VRCT_codexCLI_setup.exe
 
 .qoder/
 
