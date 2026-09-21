@@ -125,6 +125,13 @@ run_mapping = {
     "selected_openai_compatible_model":"/run/selected_openai_compatible_model",
     "selectable_ollama_model_list":"/run/selectable_ollama_model_list",
     "selected_ollama_model":"/run/selected_ollama_model",
+    "selectable_codex_model_list":"/run/selectable_codex_model_list",
+    "selected_codex_model":"/run/selected_codex_model",
+    # インストールとログインは完了まで数分かかりうるため、エンドポイントは
+    # 即 200 を返し、結果をこの3つで push する (項目44: UI を固めない)。
+    "codex_status":"/run/codex_status",
+    "codex_install":"/run/codex_install",
+    "codex_login":"/run/codex_login",
     "selectable_groq_whisper_model_list":"/run/selectable_groq_whisper_model_list",
     "selected_groq_whisper_model":"/run/selected_groq_whisper_model",
     "selectable_openai_whisper_model_list":"/run/selectable_openai_whisper_model_list",
@@ -354,6 +361,18 @@ mapping = {
     "/get/data/selectable_ollama_model_list": {"status": True, "variable":controller.getTranslatorOllamaModelList},
     "/get/data/selected_ollama_model": {"status": True, "variable":controller.getTranslatorOllamaModel},
     "/set/data/selected_ollama_model": {"status": True, "variable":controller.setTranslatorOllamaModel},
+
+    # Codex / ChatGPT。`codex_install` と `codex_login` は即座に 200 を返し、
+    # 実際の結果は run_mapping の同名キー経由で push される (項目44)。
+    "/get/data/connected_codex": {"status": True, "variable":controller.getTranslatorCodexConnection},
+    "/get/data/codex_status": {"status": True, "variable":controller.getTranslatorCodexStatus},
+    "/run/codex_connection": {"status": True, "variable":controller.checkTranslatorCodexConnection},
+    "/run/codex_install": {"status": True, "variable":controller.installTranslatorCodexCLI},
+    "/run/codex_login": {"status": True, "variable":controller.loginTranslatorCodexChatGPT},
+    "/run/codex_logout": {"status": True, "variable":controller.logoutTranslatorCodexChatGPT},
+    "/get/data/selectable_codex_model_list": {"status": True, "variable":controller.getTranslatorCodexModelList},
+    "/get/data/selected_codex_model": {"status": True, "variable":controller.getTranslatorCodexModel},
+    "/set/data/selected_codex_model": {"status": True, "variable":controller.setTranslatorCodexModel},
 
     # Transliteration
     "/get/data/convert_message_to_romaji": {"status": True, "variable":controller.getConvertMessageToRomaji},

@@ -14,6 +14,15 @@ from utils import removeLog, printLog, errorLogging, isConnectedNetwork, isValid
 from errors import ErrorCode, VRCTError
 from models.transcription.transcription_openai_compatible import TRANSCRIPTION_MODEL_KEYWORDS, TRANSCRIPTION_API_ENGINES
 from models.translation.translation_providers import TRANSLATION_PROVIDER_REGISTRY, CONNECTION_PROVIDER_REGISTRY
+from models.translation.translation_codex_cli import (
+    AUTH_MODE_API_KEY,
+    CodexInstallError,
+    STAGE_CODEX_NOT_FOUND_AFTER_INSTALL,
+    STAGE_NODE_INSTALL_FAILED,
+    STAGE_NPM_MISSING,
+    STAGE_UNSUPPORTED_PLATFORM,
+    STAGE_WINGET_MISSING,
+)
 from models.message_pipeline import MessageDirectionSpec, MIC_MESSAGE_SPEC, SPEAKER_MESSAGE_SPEC, CHAT_MESSAGE_SPEC, OCR_MESSAGE_SPEC
 
 _HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -106,6 +115,25 @@ _ENGINE_MODEL_BINDINGS = {
         "set_model": "setTranslatorOllamaModel",
         "update_client": "updateTranslatorOllamaClient",
     },
+    # Codex_CLI も疎通確認型。"authenticate" は「Codex が入っていて ChatGPT
+    # アカウントでログイン済みか」の確認で、引数は無し (connect_kwargs={})。
+    "Codex_CLI": {
+        "authenticate": "authenticationTranslatorCodex",
+        "get_model_list": "getTranslatorCodexModelList",
+        "set_model": "setTranslatorCodexModel",
+        "update_client": "updateTranslatorCodexClient",
+    },
+}
+
+# CodexInstallError.stage -> UI に返すエラーコード (項目20)。
+# stdout/stderr/exit code は errorLogging()/printLog() にだけ残し、
+# レスポンスにはこのコードから引ける短い文言しか載せない。
+_CODEX_INSTALL_STAGE_ERROR_CODES = {
+    STAGE_WINGET_MISSING: ErrorCode.CODEX_INSTALL_WINGET_MISSING,
+    STAGE_NODE_INSTALL_FAILED: ErrorCode.CODEX_INSTALL_NODE_FAILED,
+    STAGE_NPM_MISSING: ErrorCode.CODEX_INSTALL_NPM_MISSING,
+    STAGE_CODEX_NOT_FOUND_AFTER_INSTALL: ErrorCode.CODEX_INSTALL_FAILED,
+    STAGE_UNSUPPORTED_PLATFORM: ErrorCode.CODEX_INSTALL_FAILED,
 }
 
 
@@ -3142,6 +3170,197 @@ class Controller:
     def setTranslatorOllamaModel(self, data, *args, **kwargs) -> dict:
         return self._setTranslationEngineModel("Ollama", data)
 
+    # ------------------------------------------------------------------
+    # Codex / ChatGPT (Codex_CLI)
+    #
+    # モデル一覧/選択モデルは LMStudio/Ollama と同じ共通実装に載せている。
+    # 固有なのは「インストール」「ログイン」と、接続失敗を状態A〜D
+    # (項目5) に切り分けて返す部分だけ。
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _codexStatusPayload(status) -> dict:
+        """UI が状態A〜D を描くのに必要な最小限だけを返す。
+
+        `executable` (絶対パス) は返さない — UI で使い道が無い上に、
+        ユーザー名を含むパスがスクリーンショットに写りうるため。
+        """
+        return {
+            "installed": status.installed,
+            "connected": status.connected,
+            "auth_mode": status.auth_mode,
+            "version": status.version,
+        }
+
+    def getTranslatorCodexConnection(self, *args, **kwargs) -> dict:
+        return {"status":200, "result":model.getTranslatorCodexConnected()}
+
+    def getTranslatorCodexStatus(self, *args, **kwargs) -> dict:
+        """状態A〜D の判定材料を返す。インストールは一切しない (項目7)。"""
+        try:
+            status = model.getTranslatorCodexStatus()
+        except Exception:
+            errorLogging()
+            return VRCTError.create_error_response(
+                ErrorCode.CONNECTION_CODEX_FAILED,
+                data={"installed": False, "connected": False, "auth_mode": "unknown", "version": None},
+            )
+        return {"status":200, "result":self._codexStatusPayload(status)}
+
+    def checkTranslatorCodexConnection(self, *args, **kwargs) -> dict:
+        """「Codex が使える状態か」の確認。
+
+        LMStudio/Ollama は「繋がる/繋がらない」の2値で足りるが、Codex は
+        未インストール / 未ログイン / APIキーでログイン の3つを UI が
+        出し分ける必要がある (項目5/24)。そこで先に状態を1回取って失敗理由を
+        確定させ、成功時だけ共通実装
+        (`_checkTranslationEngineConnection`) に委ねる — モデル一覧と
+        選択モデルの config 反映を Codex だけ別実装にしないため。
+        """
+        printLog("Check Translator Codex_CLI Connection")
+        try:
+            status = model.getTranslatorCodexStatus()
+        except Exception:
+            errorLogging()
+            return self._failCodexConnection(ErrorCode.CONNECTION_CODEX_FAILED)
+
+        if not status.installed:
+            return self._failCodexConnection(ErrorCode.CONNECTION_CODEX_NOT_INSTALLED)
+        if status.auth_mode == AUTH_MODE_API_KEY:
+            # ChatGPT サブスクで翻訳するための Provider なので、APIキー
+            # ログインのまま通すと課金先が変わってしまう (項目25)。
+            return self._failCodexConnection(ErrorCode.CONNECTION_CODEX_API_KEY_AUTH)
+        if not status.connected:
+            return self._failCodexConnection(ErrorCode.CONNECTION_CODEX_NOT_LOGGED_IN)
+
+        return self._checkTranslationEngineConnection("Codex_CLI", connect_kwargs={})
+
+    def _failCodexConnection(self, error_code: ErrorCode) -> dict:
+        """接続失敗時に config と UI を「未接続」へ揃える。
+
+        `_checkTranslationEngineConnection` の失敗分岐と同じ後始末をするが、
+        返すエラーコードだけを失敗理由に応じて差し替える。
+        """
+        spec = CONNECTION_PROVIDER_REGISTRY["Codex_CLI"]
+        config.SELECTABLE_TRANSLATION_ENGINE_STATUS["Codex_CLI"] = False
+        setattr(config, spec.selectable_model_list_attr, [])
+        setattr(config, spec.selected_model_attr, None)
+        self.run(200, self.run_mapping[spec.run_mapping_selectable_key], getattr(config, spec.selectable_model_list_attr))
+        self.run(200, self.run_mapping[spec.run_mapping_selected_key], getattr(config, spec.selected_model_attr))
+        self.updateTranslationEngineAndEngineList()
+        return VRCTError.create_error_response(error_code, data=False)
+
+    def installTranslatorCodexCLI(self, *args, **kwargs) -> dict:
+        """Codex CLI (必要なら Node.js LTS も) をインストールする。
+
+        最大15分かかりうる (項目14) ので、ハンドラスレッドを占有せずに
+        別スレッドで走らせ、結果は `/run/codex_install` で push する
+        (項目44「Installation timeout: UI を固めない」)。進捗率は出せない
+        ので、UI 側は stage を見て indeterminate 表示にする (項目15)。
+
+        この関数はユーザーが「Install Codex CLI」を押したときにだけ呼ばれる
+        契約 (項目7)。起動時や Provider 選択時には呼ばない。
+        """
+        printLog("Install Codex CLI")
+
+        def _install() -> None:
+            try:
+                status = model.installTranslatorCodexCLI()
+            except CodexInstallError as e:
+                # stdout/stderr/exit code は debug log にだけ残す (項目20)。
+                printLog("Codex CLI installation failed", f"stage={e.stage} detail={e.detail}")
+                error_code = _CODEX_INSTALL_STAGE_ERROR_CODES.get(e.stage, ErrorCode.CODEX_INSTALL_FAILED)
+                self.run(
+                    400,
+                    self.run_mapping["codex_install"],
+                    VRCTError.create_error_response(error_code, data=False)["result"],
+                )
+                return
+            except Exception:
+                # ここに来ても VRCT は動き続ける (項目20)。
+                errorLogging()
+                self.run(
+                    400,
+                    self.run_mapping["codex_install"],
+                    VRCTError.create_error_response(ErrorCode.CODEX_INSTALL_FAILED, data=False)["result"],
+                )
+                return
+
+            self.run(200, self.run_mapping["codex_status"], self._codexStatusPayload(status))
+            self.run(200, self.run_mapping["codex_install"], self._codexStatusPayload(status))
+
+        thread = Thread(target=_install, name="CodexCLIInstall")
+        thread.daemon = True
+        thread.start()
+        # 即座に「開始した」だけを返す。完了は上の push で伝える。
+        return {"status":200, "result":True}
+
+    def loginTranslatorCodexChatGPT(self, *args, **kwargs) -> dict:
+        """公式 `codex login` を起動する (項目22/23)。
+
+        ブラウザでのログイン完了を待つため数分かかりうる。インストールと
+        同じく別スレッドで走らせ、結果を push する。VRCT は password も
+        token も触らない。
+        """
+        printLog("Connect Codex ChatGPT account")
+
+        def _login() -> None:
+            try:
+                connected = model.loginTranslatorCodexChatGPT()
+            except Exception:
+                errorLogging()
+                connected = False
+
+            try:
+                status = model.getTranslatorCodexStatus()
+                payload = self._codexStatusPayload(status)
+            except Exception:
+                errorLogging()
+                payload = {"installed": True, "connected": False, "auth_mode": "unknown", "version": None}
+
+            self.run(200, self.run_mapping["codex_status"], payload)
+            if connected:
+                # ログインできたので、そのままモデル一覧と接続状態を確定させる。
+                self.checkTranslatorCodexConnection()
+                self.run(200, self.run_mapping["codex_login"], payload)
+            else:
+                self.run(
+                    400,
+                    self.run_mapping["codex_login"],
+                    VRCTError.create_error_response(ErrorCode.CODEX_LOGIN_FAILED, data=payload)["result"],
+                )
+
+        thread = Thread(target=_login, name="CodexChatGPTLogin")
+        thread.daemon = True
+        thread.start()
+        return {"status":200, "result":True}
+
+    def logoutTranslatorCodexChatGPT(self, *args, **kwargs) -> dict:
+        """公式 `codex logout`。Disconnect ボタンの実体 (項目5 状態A)。"""
+        printLog("Disconnect Codex ChatGPT account")
+        try:
+            model.logoutTranslatorCodexChatGPT()
+        except Exception:
+            errorLogging()
+        response = self._failCodexConnection(ErrorCode.CONNECTION_CODEX_NOT_LOGGED_IN)
+        try:
+            status = model.getTranslatorCodexStatus()
+            self.run(200, self.run_mapping["codex_status"], self._codexStatusPayload(status))
+        except Exception:
+            errorLogging()
+        # ログアウトは「失敗」ではなくユーザーの意図した操作なので 200 を返す。
+        # config 側の後始末だけ接続失敗と同じものを使い回している。
+        return {"status":200, "result":response["result"]}
+
+    def getTranslatorCodexModelList(self, *args, **kwargs) -> dict:
+        return self._getTranslationEngineModelList("Codex_CLI")
+
+    def getTranslatorCodexModel(self, *args, **kwargs) -> dict:
+        return self._getTranslationEngineModel("Codex_CLI")
+
+    def setTranslatorCodexModel(self, data, *args, **kwargs) -> dict:
+        return self._setTranslationEngineModel("Codex_CLI", data)
+
 
     @staticmethod
     def setCtranslate2WeightType(data, *args, **kwargs) -> dict:
@@ -4729,6 +4948,16 @@ class Controller:
                             if len(model_list) > 0:
                                 selected_model = config.SELECTED_OLLAMA_MODEL if config.SELECTED_OLLAMA_MODEL in model_list else model_list[0]
                                 status = True
+                    case "Codex_CLI":
+                        # 起動時の可用性チェック。`codex --version` と
+                        # `codex login status` を叩くだけで、インストールは
+                        # 絶対にしない (項目7)。未インストールなら実行ファイル
+                        # 探索が即 None を返すので、ここのコストはほぼゼロ。
+                        if model.authenticationTranslatorCodex() is True:
+                            model_list = model.getTranslatorCodexModelList()
+                            if len(model_list) > 0:
+                                selected_model = config.SELECTED_CODEX_MODEL if config.SELECTED_CODEX_MODEL in model_list else model_list[0]
+                                status = True
                     case _:
                         status = connected_network is True
             except Exception as e:
@@ -4780,6 +5009,9 @@ class Controller:
             if engine == "Ollama" and not status:
                 config.SELECTABLE_OLLAMA_MODEL_LIST = []
                 config.SELECTED_OLLAMA_MODEL = None
+            if engine == "Codex_CLI" and not status:
+                config.SELECTABLE_CODEX_MODEL_LIST = []
+                config.SELECTED_CODEX_MODEL = None
 
             # モデルリストと選択モデルの設定
             if model_list is not None and status:
@@ -4824,6 +5056,11 @@ class Controller:
                         config.SELECTED_OLLAMA_MODEL = selected_model
                         model.setTranslatorOllamaModel(selected_model)
                         model.updateTranslatorOllamaClient()
+                    case "Codex_CLI":
+                        config.SELECTABLE_CODEX_MODEL_LIST = model_list
+                        config.SELECTED_CODEX_MODEL = selected_model
+                        model.setTranslatorCodexModel(selected_model)
+                        model.updateTranslatorCodexClient()
 
             printLog(f"{engine} check completed")
 
