@@ -162,6 +162,20 @@ export const { atomInstance: Atom_NotificationStatus, useHook: useStore_Notifica
 export const { atomInstance: Atom_AvailableReleases, useHook: useStore_AvailableReleases } = createAtomWithHook([], "AvailableReleases");
 export const { atomInstance: Atom_IsLMStudioConnected, useHook: useStore_IsLMStudioConnected } = createAtomWithHook(false, "IsLMStudioConnected");
 export const { atomInstance: Atom_IsOllamaConnected, useHook: useStore_IsOllamaConnected } = createAtomWithHook(false, "IsOllamaConnected");
+// Codex / ChatGPT。LMStudio/Ollama と違って "繋がっているか" の真偽値だけでは
+// UI が描けない (未インストール / インストール済みだが未ログイン /
+// APIキーでログイン済み を出し分ける必要がある) ため、バックエンドの
+// /get/data/codex_status をそのまま保持する。
+export const { atomInstance: Atom_CodexStatus, useHook: useStore_CodexStatus } = createAtomWithHook({
+    installed: false,
+    connected: false,
+    auth_mode: "none",
+    version: null,
+}, "CodexStatus");
+// インストール/ログインは完了まで数分かかりうる。進捗率は取れないので
+// (項目15) "走っているかどうか" だけを持ち、UI は spinner を出す。
+export const { atomInstance: Atom_IsCodexInstalling, useHook: useStore_IsCodexInstalling } = createAtomWithHook(false, "IsCodexInstalling");
+export const { atomInstance: Atom_IsCodexLoggingIn, useHook: useStore_IsCodexLoggingIn } = createAtomWithHook(false, "IsCodexLoggingIn");
 
 // Main Page
 // Common

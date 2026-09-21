@@ -225,6 +225,28 @@ config_page:
         select_ollama_model:
             label:
             connection_required:
+        codex:
+            label: "Codex / ChatGPT"
+            desc:
+            cli_status:
+            account_status:
+            installed:
+            not_installed:
+            connected:
+            not_connected:
+            api_key_auth:
+            installing:
+            connecting:
+            install_cli:
+            connect_chatgpt:
+            reconnect:
+            disconnect:
+            install:
+            cancel:
+            install_confirm:
+            connection_required:
+        select_codex_model:
+            label:
 
     transcription:
         section_label_mic: "마이크"

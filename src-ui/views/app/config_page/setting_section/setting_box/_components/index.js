@@ -15,3 +15,4 @@ export { WordFilter, WordFilterListToggleComponent } from "./word_filter/WordFil
 export { DownloadModels } from "./download_models/DownloadModels";
 export { MessageFormat } from "./message_format/MessageFormat";
 export { ConnectionCheckButton } from "./connection_check_button/ConnectionCheckButton";
+export { CodexConnection } from "./codex_connection/CodexConnection";

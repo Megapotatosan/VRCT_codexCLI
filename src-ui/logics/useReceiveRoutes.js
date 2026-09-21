@@ -29,6 +29,16 @@ export const STATIC_ROUTE_META_LIST = [
     { endpoint: "/get/data/connected_ollama", ns: common, hook_name: "useLLMConnection", method_name: "setConnectionStatus_Ollama" },
     { endpoint: "/run/ollama_connection", ns: common, hook_name: "useLLMConnection", method_name: "setConnectionStatus_Ollama" },
 
+    // Codex / ChatGPT。codex_install と codex_login は押した直後の 200 と、
+    // 処理完了時の push の両方がこのルートに来る。押した直後のペイロードは
+    // true なので、ハンドラ側で status 形かどうかを見て判別する。
+    { endpoint: "/get/data/codex_status", ns: common, hook_name: "useLLMConnection", method_name: "setStatus_Codex" },
+    { endpoint: "/run/codex_status", ns: common, hook_name: "useLLMConnection", method_name: "setStatus_Codex" },
+    { endpoint: "/run/codex_connection", ns: common, hook_name: "useLLMConnection", method_name: "fetchStatus_Codex" },
+    { endpoint: "/run/codex_install", ns: common, hook_name: "useLLMConnection", method_name: "finishInstall_Codex" },
+    { endpoint: "/run/codex_login", ns: common, hook_name: "useLLMConnection", method_name: "finishLogin_Codex" },
+    { endpoint: "/run/codex_logout", ns: common, hook_name: "useLLMConnection", method_name: "fetchStatus_Codex" },
+
     // Software Version
     { endpoint: "/get/data/version", ns: common, hook_name: "useSoftwareVersion", method_name: "updateSoftwareVersion" },
     { endpoint: "/get/data/available_releases", ns: common, hook_name: "useAvailableReleases", method_name: "updateAvailableReleasesFromBackend" },

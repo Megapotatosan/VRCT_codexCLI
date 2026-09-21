@@ -1,0 +1,67 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.8rem;
+}
+
+.status_rows {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2rem;
+}
+
+.status_label {
+    font-size: 1.2rem;
+    color: var(--dark_200_color);
+}
+
+.version_label {
+    font-size: 1.1rem;
+    color: var(--dark_400_color);
+}
+
+.busy_label {
+    font-size: 1.4rem;
+    color: var(--dark_100_color);
+    padding: 1.6rem;
+}
+
+.button_wrapper {
+    padding: 1.6rem;
+    border-radius: 0.4rem;
+    &:hover {
+        background-color: var(--dark_825_color);
+    }
+    &:active {
+        background-color: var(--dark_900_color);
+    }
+}
+
+.button_label {
+    font-size: 1.4rem;
+    color: var(--dark_100_color);
+    white-space: nowrap;
+}
+
+.confirm_container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.4rem;
+}
+
+.confirm_text {
+    font-size: 1.2rem;
+    color: var(--dark_200_color);
+    text-align: right;
+    white-space: pre-line;
+    max-width: 32rem;
+}
+
+.confirm_buttons {
+    display: flex;
+    flex-direction: row;
+    gap: 0.4rem;
+}

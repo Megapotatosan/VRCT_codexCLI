@@ -62,6 +62,8 @@ export const _useBackendErrorHandling = () => {
         updateSelectedOpenAICompatibleModel,
 
         updateSelectedOllamaModel,
+
+        updateSelectedCodexModel,
     } = useTranslation();
 
     const { updateEnableVrcMicMuteSync } = useOthers();
@@ -86,6 +88,13 @@ export const _useBackendErrorHandling = () => {
     const {
         updateIsOllamaConnected,
         updateIsLMStudioConnected,
+
+        // インストール/ログインが失敗した場合、完了 push
+        // (finishInstall_Codex / finishLogin_Codex) は来ずにこちらの
+        // エラー経路に入る。ここで実行中フラグを下ろさないとスピナーが
+        // 回りっぱなしになる。
+        updateIsCodexInstalling,
+        updateIsCodexLoggingIn,
     } = useLLMConnection();
 
     const errorHandling_Backend = ({error_code, message, data, endpoint, result}) => {
@@ -267,6 +276,10 @@ export const _useBackendErrorHandling = () => {
                 updateSelectedOllamaModel(data);
                 showNotification_Error(message, { category_id: error_code });
                 return;
+            case "MODEL_CODEX_INVALID":
+                updateSelectedCodexModel(data);
+                showNotification_Error(message, { category_id: error_code });
+                return;
 
             // ============================================================================
             // 接続エラー (CONNECTION_*)
@@ -285,6 +298,32 @@ export const _useBackendErrorHandling = () => {
                 return;
             case "CONNECTION_OPENAI_COMPATIBLE_URL_INVALID":
                 updateOpenAICompatibleURL(data);
+                showNotification_Error(message, { category_id: error_code });
+                return;
+
+            // Codex / ChatGPT。接続失敗の理由 (未インストール / 未ログイン /
+            // APIキーでログイン) は設定画面が状態表示で常に見せているので、
+            // ここでは通知を出すだけにして、状態そのものは
+            // /run/codex_status の push に任せる。data は false なので
+            // 接続フラグの更新には使わない。
+            case "CONNECTION_CODEX_FAILED":
+            case "CONNECTION_CODEX_NOT_INSTALLED":
+            case "CONNECTION_CODEX_NOT_LOGGED_IN":
+            case "CONNECTION_CODEX_API_KEY_AUTH":
+                showNotification_Error(message, { category_id: error_code });
+                return;
+
+            // インストール/ログインの失敗。完了 push は来ないので、
+            // 実行中フラグはここで下ろす。
+            case "CODEX_INSTALL_FAILED":
+            case "CODEX_INSTALL_WINGET_MISSING":
+            case "CODEX_INSTALL_NODE_FAILED":
+            case "CODEX_INSTALL_NPM_MISSING":
+                updateIsCodexInstalling(false);
+                showNotification_Error(message, { category_id: error_code });
+                return;
+            case "CODEX_LOGIN_FAILED":
+                updateIsCodexLoggingIn(false);
                 showNotification_Error(message, { category_id: error_code });
                 return;
 

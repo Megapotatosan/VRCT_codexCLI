@@ -20,6 +20,7 @@ import {
     DownloadModels,
     MessageFormat,
     ConnectionCheckButton,
+    CodexConnection,
 } from "../_components";
 import { Checkbox } from "@common_components";
 import { useI18n } from "@useI18n";
@@ -176,6 +177,13 @@ export const DownloadModelsContainer = (props) => (
 
 export const ConnectionCheckButtonContainer = (props) => (
     <CommonContainer Component={ConnectionCheckButton} {...props} />
+);
+
+// Codex / ChatGPT は「繋がっているか」の真偽値1つでは描けない
+// (未インストール / 未ログイン / APIキーでログイン を出し分ける) ため、
+// ConnectionCheckButton ではなく専用コンポーネントを使う。
+export const CodexConnectionContainer = (props) => (
+    <CommonContainer Component={CodexConnection} {...props} />
 );
 
 export const MessageFormatContainer = (props) => {

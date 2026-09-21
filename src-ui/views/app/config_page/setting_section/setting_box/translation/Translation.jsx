@@ -12,6 +12,7 @@ import {
     EntryWithSaveButtonContainer,
     DropdownMenuContainer,
     ConnectionCheckButtonContainer,
+    CodexConnectionContainer,
 } from "../_templates/Templates";
 
 import { ComputeDevice } from "../_components/compute_device/ComputeDevice";
@@ -60,6 +61,9 @@ export const Translation = () => {
             <OpenAICompatibleURL_Box />
             <OpenAICompatibleAuthKey_Box />
             <OpenAICompatibleModelContainer />
+
+            <CodexConnection_Box />
+            <CodexModelContainer />
         </>
     );
 };
@@ -671,6 +675,67 @@ const OpenAICompatibleModelContainer = () => {
             selectFunction={selectFunction}
             state={currentSelectedOpenAICompatibleModel.state}
             is_disabled={!currentOpenAICompatibleAuthKey.data}
+        />
+    );
+};
+
+const CodexConnection_Box = () => {
+    const { t } = useI18n();
+    const {
+        currentCodexStatus,
+        currentIsCodexInstalling,
+        currentIsCodexLoggingIn,
+        installCodexCLI,
+        connectChatGPT_Codex,
+        disconnectChatGPT_Codex,
+    } = useLLMConnection();
+
+    return (
+        <CodexConnectionContainer
+            label={t("config_page.translation.codex.label")}
+            desc={t("config_page.translation.codex.desc")}
+            status={currentCodexStatus.data}
+            is_installing={currentIsCodexInstalling.data}
+            is_logging_in={currentIsCodexLoggingIn.data}
+            installFunction={installCodexCLI}
+            connectFunction={connectChatGPT_Codex}
+            disconnectFunction={disconnectChatGPT_Codex}
+            remove_border_bottom={true}
+        />
+    );
+};
+const CodexModelContainer = () => {
+    const { t } = useI18n();
+    const {
+        currentSelectableCodexModelList,
+
+        currentSelectedCodexModel,
+        setSelectedCodexModel,
+    } = useTranslation();
+
+    const { currentCodexStatus } = useLLMConnection();
+
+    const selectFunction = (selected_data) => {
+        setSelectedCodexModel(selected_data.selected_id);
+    };
+
+    // 第一版の選択肢は実質 "Automatic" のみ (項目40)。それでも他エンジンと
+    // 同じドロップダウンで出すのは、将来モデル一覧が取れるようになったときに
+    // UI 側を作り直さずに済むようにするため。
+    const is_connected = currentCodexStatus.data?.connected === true;
+    const selected_label = (!is_connected && !currentSelectedCodexModel.data)
+        ? t("config_page.translation.codex.connection_required")
+        : currentSelectedCodexModel.data;
+
+    return (
+        <DropdownMenuContainer
+            dropdown_id="select_codex_model"
+            label={t("config_page.translation.select_codex_model.label")}
+            selected_id={selected_label}
+            list={currentSelectableCodexModelList.data}
+            selectFunction={selectFunction}
+            state={currentSelectedCodexModel.state}
+            is_disabled={!is_connected}
         />
     );
 };

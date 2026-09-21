@@ -225,6 +225,28 @@ config_page:
         select_ollama_model:
             label: "Ollama モデルを選択"
             connection_required: "Ollama との接続が必要"
+        codex:
+            label: "Codex / ChatGPT"
+            desc: "このPCにインストールされた公式 Codex CLI 経由で、ChatGPT アカウントを使って翻訳します。API キーは不要です。翻訳する文章は OpenAI に送信されるため、ローカル翻訳ではありません。"
+            cli_status: "Codex CLI"
+            account_status: "ChatGPT アカウント"
+            installed: "インストール済み"
+            not_installed: "未インストール"
+            connected: "接続済み"
+            not_connected: "未接続"
+            api_key_auth: "API キーでログイン中"
+            installing: "インストール中"
+            connecting: "接続中"
+            install_cli: "Codex CLI をインストール"
+            connect_chatgpt: "ChatGPT に接続"
+            reconnect: "再接続"
+            disconnect: "接続を解除"
+            install: "インストール"
+            cancel: "キャンセル"
+            install_confirm: "ChatGPT 翻訳を使うには Codex CLI が必要です。\nVRCT が公式の Codex CLI と、必要であれば Node.js LTS をインストールします。\n続行しますか？"
+            connection_required: "ChatGPT との接続が必要"
+        select_codex_model:
+            label: "Codex モデルを選択"
 
     transcription:
         section_label_mic: "マイク"

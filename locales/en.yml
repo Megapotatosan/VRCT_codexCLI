@@ -225,6 +225,30 @@ config_page:
         select_ollama_model:
             label: "Select Ollama Model"
             connection_required: "Ollama Connection Required"
+        codex:
+            label: "Codex / ChatGPT"
+            # Codex は CTranslate2/LM Studio/Ollama と違ってローカル翻訳ではない。
+            # 文章が外部に送られることを設定画面で明示する (項目41)。
+            desc: "Translate with your ChatGPT account through the official Codex CLI installed on this PC. No API key is needed. Text you translate is sent to OpenAI, so this is not local translation."
+            cli_status: "Codex CLI"
+            account_status: "ChatGPT Account"
+            installed: "Installed"
+            not_installed: "Not Installed"
+            connected: "Connected"
+            not_connected: "Not Connected"
+            api_key_auth: "Signed in with an API key"
+            installing: "Installing"
+            connecting: "Connecting"
+            install_cli: "Install Codex CLI"
+            connect_chatgpt: "Connect ChatGPT"
+            reconnect: "Reconnect"
+            disconnect: "Disconnect"
+            install: "Install"
+            cancel: "Cancel"
+            install_confirm: "Codex CLI is required to use ChatGPT translation.\nVRCT will install the official Codex CLI and, if required, Node.js LTS.\nContinue?"
+            connection_required: "ChatGPT Connection Required"
+        select_codex_model:
+            label: "Select Codex Model"
 
     transcription:
         section_label_mic: "Mic"

@@ -77,6 +77,9 @@ export const translator_status = [
     { id: "LMStudio", label: `LMStudio`, is_available: false },
     { id: "Ollama", label: `Ollama`, is_available: false },
     { id: "OpenAI_Compatible", label: `OpenAI Compatible`, is_available: false },
+    // ローカルの公式 Codex CLI 経由で ChatGPT アカウントを使う。
+    // OpenAI API とは authentication mechanism が違うので別エンジン扱い。
+    { id: "Codex_CLI", label: `Codex / ChatGPT`, is_available: false },
 ];
 
 export const ctranslate2_weight_type_status = [

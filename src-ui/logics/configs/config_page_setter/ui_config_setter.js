@@ -463,6 +463,27 @@ export const SETTINGS_ARRAY = [
         add_endpoint_run_array: ["from_backend"],
         base_endpoint_name: "selected_ollama_model",
     },
+    // Codex / ChatGPT。第一版は実質 "Automatic" の1件だけだが (項目40)、
+    // モデル一覧/選択モデルの配線は他エンジンと完全に同じ形にしてある。
+    {
+        Category: "Translation",
+        Base_Name: "SelectableCodexModelList",
+        default_value: [],
+        ui_template_id: "list",
+        logics_template_id: "get_set",
+        add_endpoint_run_array: ["from_backend"],
+        base_endpoint_name: "selectable_codex_model_list",
+        response_transform: "arrayToObject",
+    },
+    {
+        Category: "Translation",
+        Base_Name: "SelectedCodexModel",
+        default_value: "",
+        ui_template_id: "select",
+        logics_template_id: "get_set",
+        add_endpoint_run_array: ["from_backend"],
+        base_endpoint_name: "selected_codex_model",
+    },
 
     // Transcription
     // Mic
