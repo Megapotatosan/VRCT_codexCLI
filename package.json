@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "setup-python": "bat\\install.bat",
+    "setup-python-cpu": "bat\\install_cpu.bat",
     "build-python": "bat\\build.bat",
     "build-python-cuda": "bat\\build_cuda.bat",
     "sidecar-dev": "bat\\sidecar_dev.bat",

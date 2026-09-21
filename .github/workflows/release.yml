@@ -112,8 +112,10 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Setup Python environment
-        run: npm run setup-python
+      - name: Setup Python environment (CPU only)
+        # CPU版しか publish しないので .venv_cuda は作らない。
+        # 数GBのダウンロードとビルド時間をそのまま削れる。
+        run: npm run setup-python-cpu
 
       - name: Install Python script dependencies
         run: pip install tqdm
