@@ -1,13 +1,24 @@
-name: Release VRCT
+name: Release VRCT_codexCLI
+
+# 上流 (misyaguziya/VRCT) との違い:
+#   - 配布先は Hugging Face ではなく、このリポジトリの GitHub Releases のみ。
+#     インストーラ (src-tauri/nsis/template.nsi) もここを見に来る。
+#   - CPU版のみをビルドする。GPU版 (VRCT_cuda.zip, 約3.4GB) は GitHub の
+#     リリースアセット上限 2GB を超えるため publish できない。
+#
+# 添付するアセット名はインストーラ側の実装と結びついている。
+# VRCT.zip / VRCT.zip.sha256 の名前を変えると setup.exe が本体を
+# ダウンロードできなくなる。
 
 on:
   push:
     tags:
       - 'v*' # タグが 'v' で始まる場合にトリガー (例: v1.0.0)
+  workflow_dispatch: {}
 
 jobs:
   release:
-    name: Build VRCT
+    name: Build VRCT_codexCLI
     runs-on: windows-latest
     permissions:
       contents: write
@@ -27,12 +38,12 @@ jobs:
         id: channel
         shell: pwsh
         run: |
+          # GitHub では stable/beta をリポジトリではなく prerelease フラグで
+          # 分ける。タグに -beta / -rc が含まれていれば prerelease 扱い。
           if ("${{ github.ref_name }}" -match "-(beta|rc)") {
             echo "is_beta=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-            echo "hf_repo=ms-software/VRCT-beta" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           } else {
             echo "is_beta=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-            echo "hf_repo=ms-software/VRCT" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           }
 
       - name: Verify version numbers match the tag
@@ -96,11 +107,7 @@ jobs:
           python-version: '3.11'
 
       - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install dependencies
         run: npm install
@@ -111,75 +118,48 @@ jobs:
       - name: Install Python script dependencies
         run: pip install tqdm
 
-      - name: Build and package
-        run: npm run release-all
+      - name: Run backend tests
+        run: |
+          .venv\Scripts\python.exe -m pip install pytest
+          .venv\Scripts\python.exe -m pytest
 
-      - name: Compute SHA-256 of the installer
+      - name: Build and package (CPU)
+        run: npm run release
+
+      - name: Compute SHA-256 checksums
         id: sha256
         shell: pwsh
         run: |
+          # インストーラは VRCT.zip の隣に置かれた .sha256 を先に取得して
+          # 展開前に検証する。名前と内容の形式 (小文字hexのみ) を変えないこと。
           $exePath = "./src-tauri/target/release/bundle/nsis/VRCT_${{ env.VERSION }}_x64-setup.exe"
-          $shaPath = "./src-tauri/target/release/bundle/nsis/VRCT_${{ env.VERSION }}_x64-setup.exe.sha256"
+          $shaPath = "$exePath.sha256"
           $hash = (Get-FileHash -Path $exePath -Algorithm SHA256).Hash.ToLower()
           Set-Content -Path $shaPath -Value $hash -NoNewline -Encoding ascii
-          $cpuZipShaPath = "./VRCT.zip.sha256"
-          $gpuZipShaPath = "./VRCT_cuda.zip.sha256"
+
           $cpuZipHash = (Get-FileHash -Path "./VRCT.zip" -Algorithm SHA256).Hash.ToLower()
-          $gpuZipHash = (Get-FileHash -Path "./VRCT_cuda.zip" -Algorithm SHA256).Hash.ToLower()
-          Set-Content -Path $cpuZipShaPath -Value $cpuZipHash -NoNewline -Encoding ascii
-          Set-Content -Path $gpuZipShaPath -Value $gpuZipHash -NoNewline -Encoding ascii
+          Set-Content -Path "./VRCT.zip.sha256" -Value $cpuZipHash -NoNewline -Encoding ascii
+
+          # setup.exe は固定名でも添付する。VRCT 本体の Updater タブが
+          # /releases/latest/download/VRCT_setup.exe を決め打ちで取りに来る
+          # (config.SETUP_DOWNLOAD_URL)。
+          Copy-Item -Path $exePath -Destination "./VRCT_setup.exe"
+
           echo "sha_path=$shaPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          echo "cpu_zip_sha_path=$cpuZipShaPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          echo "gpu_zip_sha_path=$gpuZipShaPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-
-      - name: Upload to Hugging Face Hub
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        shell: pwsh
-        run: |
-          pip install huggingface_hub==0.34.4
-
-          $UPLOAD_DIR = "./hf_upload_temp"
-          New-Item -ItemType Directory -Force -Path $UPLOAD_DIR
-          Copy-Item -Path ./VRCT.zip -Destination "$UPLOAD_DIR/VRCT.zip"
-          Copy-Item -Path ./VRCT_cuda.zip -Destination "$UPLOAD_DIR/VRCT_cuda.zip"
-          Copy-Item -Path ${{ steps.sha256.outputs.cpu_zip_sha_path }} -Destination "$UPLOAD_DIR/VRCT.zip.sha256"
-          Copy-Item -Path ${{ steps.sha256.outputs.gpu_zip_sha_path }} -Destination "$UPLOAD_DIR/VRCT_cuda.zip.sha256"
-          Copy-Item -Path "./src-tauri/target/release/bundle/nsis/VRCT_${{ env.VERSION }}_x64-setup.exe" -Destination "$UPLOAD_DIR/VRCT_setup.exe"
-
-          hf upload --repo-type model --commit-message "👍️[Update] ${{ env.VERSION }} Release" ${{ steps.channel.outputs.hf_repo }} $UPLOAD_DIR
-
-          hf repo tag create ${{ steps.channel.outputs.hf_repo }} ${{ github.ref_name }} --repo-type model --message "Release ${{ github.ref_name }}"
-
-          Remove-Item -Recurse -Force $UPLOAD_DIR
+          echo "exe_path=$exePath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ env.VERSION }}
+          tag_name: ${{ github.ref_name }}
+          name: ${{ env.VERSION }}
           draft: false
           prerelease: ${{ steps.channel.outputs.is_beta }}
-
-      - name: Upload Release Asset (NSIS Installer)
-        uses: actions/upload-release-asset@v1
+          files: |
+            ${{ steps.sha256.outputs.exe_path }}
+            ${{ steps.sha256.outputs.sha_path }}
+            VRCT_setup.exe
+            VRCT.zip
+            VRCT.zip.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./src-tauri/target/release/bundle/nsis/VRCT_${{ env.VERSION }}_x64-setup.exe
-          asset_name: VRCT_${{ env.VERSION }}_x64-setup.exe
-          asset_content_type: application/octet-stream
-
-      - name: Upload Release Asset (SHA-256 checksum)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ steps.sha256.outputs.sha_path }}
-          asset_name: VRCT_${{ env.VERSION }}_x64-setup.exe.sha256
-          asset_content_type: text/plain

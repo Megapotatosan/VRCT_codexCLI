@@ -678,10 +678,11 @@ class Config:
     _debounce_time: int = 2
     _file_lock: threading.Lock = threading.Lock()
 
-    # Hugging Face repos hosting the NSIS setup.exe per release channel; see
-    # docs/readme_build.md "β版リリース" and .github/workflows/release.yml.
-    _HF_REPO_STABLE = "ms-software/VRCT"
-    _HF_REPO_BETA = "ms-software/VRCT-beta"
+    # このフォーク (VRCT_codexCLI) は Hugging Face を使わず GitHub Releases
+    # だけで配布する。stable/beta はリポジトリではなく prerelease フラグで
+    # 区別するため、リポジトリは1つ。
+    # 詳細は docs/readme_build.md と .github/workflows/release.yml を参照。
+    _RELEASE_REPO = "Megapotatosan/VRCT_codexCLI"
 
     # VERSION に含まれていれば beta チャンネル扱いとする接尾辞。NSIS
     # インストーラの .onInit (template.nsi) が ${VERSION} に対して行って
@@ -707,8 +708,15 @@ class Config:
 
     @property
     def SETUP_DOWNLOAD_URL(self) -> str:
-        repo = self._HF_REPO_BETA if self.SELECTED_RELEASE_CHANNEL == "beta" else self._HF_REPO_STABLE
-        return f"https://huggingface.co/{repo}/resolve/main/VRCT_setup.exe"
+        """更新時に取ってくる setup.exe のURL。
+
+        チャンネルで分岐しないのは、setup.exe 自体はどのバージョンのものでも
+        よく、実際にどのパッケージを入れるかは起動時の `/VERSION=` /
+        `/CHANNEL=` 引数で決まるため (model.updateSoftware が付与する)。
+        GitHub の `/releases/latest` は prerelease を除外するので、ここは
+        常に「最新の正式リリースの setup.exe」を指す。
+        """
+        return f"https://github.com/{self._RELEASE_REPO}/releases/latest/download/VRCT_setup.exe"
 
     def __new__(cls):
         if cls._instance is None:
@@ -1025,8 +1033,12 @@ class Config:
         self._PATH_CONFIG = os_path.join(self._PATH_LOCAL, "config.json")
         self._PATH_LOGS = os_path.join(self._PATH_LOCAL, "logs")
         os_makedirs(self._PATH_LOGS, exist_ok=True)
-        self._GITHUB_URL = "https://api.github.com/repos/misyaguziya/VRCT/releases/latest"
-        self._GITHUB_RELEASES_LIST_URL = "https://api.github.com/repos/misyaguziya/VRCT/releases"
+        # 更新チェック先はこのフォーク自身。上流 (misyaguziya/VRCT) を指した
+        # ままにすると、Codex 対応版を使っているユーザーに上流の新バージョンを
+        # 「更新」として提示し、インストールするとこのフォークの変更が
+        # 丸ごと消える。
+        self._GITHUB_URL = f"https://api.github.com/repos/{self._RELEASE_REPO}/releases/latest"
+        self._GITHUB_RELEASES_LIST_URL = f"https://api.github.com/repos/{self._RELEASE_REPO}/releases"
         # VRCT 3.4.2 fails to start (fixed in 3.4.3); exclude it from version
         # selection/update detection instead of letting users install it.
         self._MIN_SUPPORTED_VERSION = "3.4.3"

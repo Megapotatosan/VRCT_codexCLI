@@ -213,25 +213,29 @@ Function PageChooseEdition
 
     ${NSD_CreateRadioButton} 0 20u 100% 12u "CPU version (smaller download, works on any PC)"
     Pop $RadioCpuEdition
-    ${NSD_CreateRadioButton} 0 40u 100% 12u "GPU version (requires an NVIDIA GPU, larger download, faster recognition)"
+    ${NSD_CreateRadioButton} 0 40u 100% 12u "GPU version (not available in this build)"
     Pop $RadioGpuEdition
 
-    ${If} $SelectedEdition == "gpu"
-        SendMessage $RadioGpuEdition ${BM_SETCHECK} ${BST_CHECKED} 0
-    ${Else}
-        SendMessage $RadioCpuEdition ${BM_SETCHECK} ${BST_CHECKED} 0
-    ${EndIf}
+    ; このフォークは GitHub Releases だけで配布しており、GPU版
+    ; (VRCT_cuda.zip, 約3.4GB) は GitHub のリリースアセット上限 2GB を
+    ; 超えるため publish できない。選べてしまうと存在しないURLを取りに
+    ; 行って必ずダウンロード失敗するので、選択肢自体を無効化する。
+    ; CUDA を配りたくなったら、2GBを扱える配信先 (Hugging Face 等) を
+    ; 用意した上でここと release.yml を戻すこと。
+    EnableWindow $RadioGpuEdition 0
+    ${NSD_CreateLabel} 0 56u 100% 20u "This build publishes the CPU version only. The GPU package exceeds GitHub's 2GB release asset limit, so it is not distributed here."
+    Pop $0
+
+    StrCpy $SelectedEdition "cpu"
+    SendMessage $RadioCpuEdition ${BM_SETCHECK} ${BST_CHECKED} 0
 
     nsDialogs::Show
 FunctionEnd
 
 Function PageLeaveChooseEdition
-    ${NSD_GetState} $RadioGpuEdition $0
-    ${If} $0 == ${BST_CHECKED}
-        StrCpy $SelectedEdition "gpu"
-    ${Else}
-        StrCpy $SelectedEdition "cpu"
-    ${EndIf}
+    ; GPU ラジオは無効化済みなので選ばれることはないが、"/EDITION=gpu" が
+    ; 外から渡された場合も含めて CPU に固定する。
+    StrCpy $SelectedEdition "cpu"
 FunctionEnd
 
 ; Release channel (stable/beta) and specific-version pinning are controlled
@@ -732,8 +736,12 @@ Section Install
 
   !addplugindir "..\..\..\..\nsis\plugins\x86-unicode"
   ; 指定のURLからファイルをダウンロード
-  !define SOFTWARE_RELEASE_REPO "ms-software/VRCT"
-  !define SOFTWARE_RELEASE_REPO_BETA "ms-software/VRCT-beta"
+  ;
+  ; このフォーク (VRCT_codexCLI) は Hugging Face を使わず、GitHub Releases
+  ; だけで配布する。stable/beta でリポジトリを分けていた上流と違い、
+  ; GitHub では同一リポジトリの prerelease フラグで区別できるため
+  ; リポジトリは1つで足りる。
+  !define SOFTWARE_RELEASE_REPO "Megapotatosan/VRCT_codexCLI"
   !define SOFTWARE_DOWNLOAD_FILENAME "VRCT.zip"
   !define SOFTWARE_DOWNLOAD_FILENAME_GPU "VRCT_cuda.zip"
 
@@ -759,7 +767,6 @@ Section Install
   Var /GLOBAL dl_xfersize
   Var /GLOBAL release_revision
   Var /GLOBAL release_repo
-  Var /GLOBAL effective_version
   Var /GLOBAL beta_marker_pos
   Var /GLOBAL req_dl_mb
   Var /GLOBAL req_extract_mb
@@ -818,38 +825,36 @@ Section Install
     ${EndIf}
   ${EndIf}
 
-  ; Pin to a specific released version's HF tag (e.g. "/VERSION=3.4.2" -> tag
-  ; "v3.4.2", or typed into the release-channel page) when requested for
-  ; rollback; otherwise fetch the latest from the selected channel's "main".
-  ${If} $TargetVersion != ""
-    StrCpy $release_revision "v$TargetVersion"
-    StrCpy $effective_version $TargetVersion
+  ; GitHub Releases のダウンロードURLは2形態しかない:
+  ;   最新 (prerelease を除く): /releases/latest/download/<asset>
+  ;   タグ指定               : /releases/download/<tag>/<asset>
+  ; $release_revision にはこの "latest/download" または "download/v<ver>"
+  ; の部分を入れる (上流の HF revision に相当)。
+  StrCpy $release_repo "${SOFTWARE_RELEASE_REPO}"
 
-    ; Beta versions (e.g. "3.5.0-beta.1") are published to a separate HF repo,
-    ; not the production one -- an explicit pinned version routes by its own
-    ; string, regardless of which channel radio button is selected, since a
-    ; given tag only ever exists in one of the two repos.
-    ${StrLoc} $beta_marker_pos $effective_version "-beta" ">"
-    ${If} $beta_marker_pos == ""
-      ${StrLoc} $beta_marker_pos $effective_version "-rc" ">"
-    ${EndIf}
-    ${If} $beta_marker_pos == ""
-      StrCpy $release_repo "${SOFTWARE_RELEASE_REPO}"
-    ${Else}
-      StrCpy $release_repo "${SOFTWARE_RELEASE_REPO_BETA}"
-    ${EndIf}
+  ${If} $TargetVersion != ""
+    ; ロールバック等でバージョンが明示されている (例: "/VERSION=3.4.2")。
+    StrCpy $release_revision "download/v$TargetVersion"
   ${Else}
-    ; No specific version pinned -- fetch the latest from whichever channel
-    ; the user picked on the release-channel page.
-    StrCpy $release_revision "main"
+    ${StrLoc} $beta_marker_pos "${VERSION}" "-beta" ">"
+    ${If} $beta_marker_pos == ""
+      ${StrLoc} $beta_marker_pos "${VERSION}" "-rc" ">"
+    ${EndIf}
+
     ${If} $SelectedChannel == "beta"
-      StrCpy $release_repo "${SOFTWARE_RELEASE_REPO_BETA}"
+    ${AndIf} $beta_marker_pos != ""
+      ; GitHub の /releases/latest は prerelease を意図的に除外するため、
+      ; 「最新のベータ」を指すURLが存在しない。そこでベータでは
+      ; この setup.exe 自身がビルドされたバージョンを取りに行く
+      ; (beta の setup.exe と中身のパッケージは同じタグで publish される)。
+      StrCpy $release_revision "download/v${VERSION}"
     ${Else}
-      StrCpy $release_repo "${SOFTWARE_RELEASE_REPO}"
+      ; 通常経路: prerelease でない最新リリース。
+      StrCpy $release_revision "latest/download"
     ${EndIf}
   ${EndIf}
 
-  StrCpy $cmder_dl "https://huggingface.co/$release_repo/resolve/$release_revision/$file_name"
+  StrCpy $cmder_dl "https://github.com/$release_repo/releases/$release_revision/$file_name"
   DetailPrint "Got URL : $cmder_dl"
 
   ; New releases publish a SHA-256 sidecar next to each package. Download it

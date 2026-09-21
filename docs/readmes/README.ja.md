@@ -1,3 +1,21 @@
+> ### ⚠️ これは [VRCT](https://github.com/misyaguziya/VRCT) のフォークです
+>
+> **VRCT_codexCLI** — 公式 Codex CLI を通して ChatGPT アカウントで翻訳する
+> エンジン (`Codex / ChatGPT`) を追加したフォークです。API キーは不要です。
+>
+> VRCT 本体は **[みしゃ (misyaguzi)](https://github.com/misyaguziya)** さんと
+> コントリビューターの皆さんによる作品です (MIT License, © 2023 misyaguziya)。
+> このフォークは翻訳プロバイダを1つ足しているだけで、それ以外は上流のままです。
+> 支援は上流へ: [BOOTH](https://misyaguziya.booth.pm/items/5155325) ·
+> [pixivFANBOX](https://vrct-dev.fanbox.cc) · [Patreon](https://patreon.com/vrct_dev) ·
+> [GitHub Sponsors](https://github.com/sponsors/misyaguziya)
+>
+> **このフォークの不具合を上流に報告しないでください。**
+> 詳細と Issue は [Megapotatosan/VRCT_codexCLI](https://github.com/Megapotatosan/VRCT_codexCLI) へ。
+> 以下は上流の README です。
+
+---
+
 <div align="center">
 
 <picture>

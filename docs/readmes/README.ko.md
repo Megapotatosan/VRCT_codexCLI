@@ -1,3 +1,21 @@
+> ### ⚠️ 이것은 [VRCT](https://github.com/misyaguziya/VRCT)의 포크입니다
+>
+> **VRCT_codexCLI** — 공식 Codex CLI를 통해 ChatGPT 계정으로 번역하는
+> 엔진(`Codex / ChatGPT`)을 추가한 포크입니다. API 키가 필요 없습니다.
+>
+> VRCT 본체는 **[みしゃ (misyaguzi)](https://github.com/misyaguziya)** 님과
+> 기여자들의 작품입니다 (MIT License, © 2023 misyaguziya).
+> 이 포크는 번역 제공자를 하나 추가했을 뿐이며 나머지는 업스트림 그대로입니다.
+> 후원은 업스트림으로: [BOOTH](https://misyaguziya.booth.pm/items/5155325) ·
+> [pixivFANBOX](https://vrct-dev.fanbox.cc) · [Patreon](https://patreon.com/vrct_dev) ·
+> [GitHub Sponsors](https://github.com/sponsors/misyaguziya)
+>
+> **이 포크의 버그를 업스트림에 보고하지 마세요.**
+> 자세한 내용과 이슈는 [Megapotatosan/VRCT_codexCLI](https://github.com/Megapotatosan/VRCT_codexCLI)에서.
+> 아래는 업스트림 README입니다.
+
+---
+
 <div align="center">
 
 <picture>

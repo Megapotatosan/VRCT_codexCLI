@@ -1,3 +1,21 @@
+> ### ⚠️ 這是 [VRCT](https://github.com/misyaguziya/VRCT) 的分支 (fork)
+>
+> **VRCT_codexCLI** — 新增了透過官方 Codex CLI、使用你的 ChatGPT 帳戶翻譯的
+> 引擎 (`Codex / ChatGPT`)。不需要 API Key。
+>
+> VRCT 本體由 **[みしゃ (misyaguzi)](https://github.com/misyaguziya)**
+> 與各位貢獻者開發 (MIT License, © 2023 misyaguziya)。
+> 本分支只是在其之上加了一個翻譯提供者，其餘部分完全沿用上游。
+> 贊助請支持上游：[BOOTH](https://misyaguziya.booth.pm/items/5155325) ·
+> [pixivFANBOX](https://vrct-dev.fanbox.cc) · [Patreon](https://patreon.com/vrct_dev) ·
+> [GitHub Sponsors](https://github.com/sponsors/misyaguziya)
+>
+> **請勿將本分支的問題回報到上游。**
+> 詳細說明與 Issue 請見 [Megapotatosan/VRCT_codexCLI](https://github.com/Megapotatosan/VRCT_codexCLI)。
+> 以下為上游的 README。
+
+---
+
 <div align="center">
 
 <picture>
