@@ -160,10 +160,14 @@ class TestSetSelectedTranslationEnginesValidatesFinalEngine(unittest.TestCase):
     downgrade an unavailable engine to CTranslate2 afterward."""
 
     TAB_NO = "1"
+    # languages.yml のキー順の写し。エンジンを足したらここにも足すこと
+    # (足し忘れても status dict を丸ごと差し替える作りなので落ちはしないが、
+    # リストが黙って実態から乖離する)。
     ENGINES = [
         "DeepL_API", "Google", "Bing", "Papago", "CTranslate2",
         "Plamo_API", "Gemini_API", "OpenAI_API", "LMStudio",
         "OpenAI_Compatible", "Ollama", "Groq_API", "OpenRouter_API",
+        "Codex_CLI",
     ]
 
     def setUp(self) -> None:
@@ -237,10 +241,14 @@ class TestUpdateTranslationEngineAndEngineListResetsLanguageWhenCTranslate2AlsoU
     list (shown as greyed out) in the UI."""
 
     TAB_NO = "1"
+    # languages.yml のキー順の写し。エンジンを足したらここにも足すこと
+    # (足し忘れても status dict を丸ごと差し替える作りなので落ちはしないが、
+    # リストが黙って実態から乖離する)。
     ENGINES = [
         "DeepL_API", "Google", "Bing", "Papago", "CTranslate2",
         "Plamo_API", "Gemini_API", "OpenAI_API", "LMStudio",
         "OpenAI_Compatible", "Ollama", "Groq_API", "OpenRouter_API",
+        "Codex_CLI",
     ]
 
     def setUp(self) -> None:
