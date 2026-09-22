@@ -39,6 +39,11 @@ to know what Node.js, npm, winget, or PATH are.
 Ollama, text you translate with this engine leaves your machine and is
 sent to OpenAI, under your ChatGPT account's data-handling settings.
 
+When a translation fails, `codex exec` echoes the whole prompt — which
+contains your message and the recent conversation history — to stderr.
+VRCT logs only the CLI's `ERROR:` lines, never that echo, so a failure
+cannot spill conversation text into the debug log.
+
 VRCT's own diagnostics record the *shape* of each translation — provider,
 route, cold/warm, character count, elapsed milliseconds, outcome — and
 never the message text:
@@ -183,12 +188,42 @@ completion push, or on an error.
 
 ## Model selection
 
-The first version offers `Automatic` only. There is no stable, machine-
-readable way to enumerate the models a given ChatGPT account can reach
-through Codex, and hardcoding names guarantees a list that goes stale.
-With `Automatic`, `--model` is not passed and the user's
-`~/.codex/config.toml` decides. The dropdown is wired like every other
-engine's, so adding real choices later is a backend-only change.
+The dropdown lists `Automatic` followed by the real catalog from
+`codex debug models`, which renders it as JSON. Nothing is hardcoded, so
+the list follows whatever OpenAI ships. Models the CLI marks
+`visibility: "hide"` (`gpt-reserve`, `codex-auto-review`) are filtered
+out, and the rest are ordered by the catalog's own `priority`.
+
+`Automatic` means "don't pass `--model`", so `model` in
+`~/.codex/config.toml` decides.
+
+### Translation does not inherit your agent config
+
+Everything else in `~/.codex/config.toml` is tuned for Codex as a
+*coding agent*, and inheriting it makes translation worse. A real
+config observed in testing:
+
+```toml
+model_reasoning_effort = "high"
+personality = "pragmatic"
+```
+
+That took **11 seconds** for one short line, burned through a ChatGPT
+plan's usage limit quickly, and produced output where the model
+*interpreted* instead of translating — 校外教學 ("school field trip")
+came out as 外科教育 ("surgical education").
+
+So the translation path always overrides both:
+
+```
+-c model_reasoning_effort="low"   # translation needs no deep reasoning
+-c personality="none"             # no agent voice colouring the output
+```
+
+If translation quality still looks off, try a different model in the
+dropdown before anything else: the defaults are agentic coding models,
+and the larger ones are not necessarily better at short conversational
+translation.
 
 ## Languages
 

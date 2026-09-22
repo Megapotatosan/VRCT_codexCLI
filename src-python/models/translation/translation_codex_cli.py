@@ -88,6 +88,30 @@ AUTH_MODE_CHATGPT = "chatgpt"
 AUTH_MODE_API_KEY = "api_key"
 AUTH_MODE_UNKNOWN = "unknown"
 
+# `codex exec` は失敗時、**送ったプロンプトをそのまま stderr にエコーする**。
+# プロンプトには翻訳対象の本文と直近の会話履歴が入っているため、stderr を
+# そのままログに流すと「診断ログに会話本文を書かない」(項目34) が崩れる。
+# ログに出してよいのは CLI が出す `ERROR:` 行だけに限定する。
+_RE_CODEX_ERROR_LINE = re.compile(r"^\s*ERROR:\s*(.+)$", re.MULTILINE)
+
+# ChatGPT プランの利用上限。ユーザーが自分で対処できる (待つ/購入する)
+# 種類の失敗なので、一般的な CLI エラーと区別して UI に出す。
+_RE_USAGE_LIMIT = re.compile(r"usage limit|rate limit|quota", re.IGNORECASE)
+
+# 翻訳時に必ず上書きする Codex の設定。
+#
+# ユーザーの `~/.codex/config.toml` は「コーディングエージェントとしての
+# Codex」向けに書かれている。実測では `model_reasoning_effort = "high"` が
+# 入っており、1行の翻訳に11秒かかったうえ、推論モデルが訳すのではなく
+# 解釈してしまい (「校外教學」->「外科教育」)、ChatGPT の利用枠も急速に
+# 消費した。翻訳は推論を必要としないので、ここは継承せず明示的に落とす。
+_TRANSLATION_CONFIG_OVERRIDES = (
+    'model_reasoning_effort="low"',
+    # personality はエージェントの語り口を変える設定で、翻訳文に色が付く。
+    # 翻訳では素の出力がほしいので無効化する。
+    'personality="none"',
+)
+
 # インストール処理がどの段階で失敗したかを UI ではなく debug log に残すための
 # ラベル (項目20)。UI にはこの stage に対応する短い文言だけを出す。
 STAGE_WINGET_MISSING = "winget_missing"
@@ -410,6 +434,78 @@ def parse_login_status(result: CommandResult) -> str:
     return AUTH_MODE_UNKNOWN
 
 
+def safe_stderr_summary(stderr: str, limit: int = 500) -> str:
+    """stderr から、ログに出してよい部分だけを取り出す。
+
+    `codex exec` は失敗時にプロンプト全文 (= 翻訳対象の本文と会話履歴) を
+    stderr へエコーする。そのままログへ流すと会話内容が診断ログに残るため、
+    CLI が出す `ERROR:` 行だけを抜き出す。該当行が無い場合は、内容ではなく
+    長さだけを記録する。
+    """
+    errors = _RE_CODEX_ERROR_LINE.findall(stderr or "")
+    if errors:
+        # 同じ ERROR が繰り返し出ることがあるので重複を潰す。
+        seen, unique = set(), []
+        for e in errors:
+            e = e.strip()
+            if e not in seen:
+                seen.add(e)
+                unique.append(e)
+        return " | ".join(unique)[:limit]
+    return f"<no ERROR line; {len(stderr or '')} chars suppressed>"
+
+
+def is_usage_limit_error(stderr: str) -> bool:
+    """ChatGPT プランの利用上限に当たったかどうか。
+
+    ユーザー自身が対処できる失敗 (待つ / プランを上げる) なので、UI では
+    一般的な CLI エラーと区別して案内する。判定は `ERROR:` 行に限定し、
+    プロンプト本文が偶然この語を含んでも誤検知しないようにする。
+    """
+    return bool(_RE_USAGE_LIMIT.search(safe_stderr_summary(stderr)))
+
+
+def list_models(codex_path: str) -> list:
+    """`codex debug models` が返すモデルカタログから、選択肢を組み立てる。
+
+    第一版では「安定した機械可読の一覧が無い」と判断して Automatic の1択に
+    していたが (項目40)、実機で確認したところ `codex debug models` が
+    カタログを JSON で返すことが分かったので、そちらを使う。
+    ハードコードしないので、OpenAI がモデルを入れ替えても追従する。
+
+    `visibility` が "list" のものだけを出す (Codex 自身が UI に出さない
+    "hide" のモデル — gpt-reserve / codex-auto-review 等 — は除外)。
+    並びは Codex のカタログ順ではなく priority 昇順。
+
+    Returns:
+        モデル slug のリスト。取得に失敗した場合は空リスト。
+    """
+    result = _run(
+        [codex_path, "debug", "models"],
+        timeout=TIMEOUT_PROBE_SEC,
+        env=subscription_environment(),
+    )
+    if not result.ok:
+        return []
+    try:
+        payload = json.loads(result.stdout)
+    except ValueError:
+        return []
+
+    models = payload.get("models")
+    if not isinstance(models, list):
+        return []
+
+    visible = [
+        m for m in models
+        if isinstance(m, dict)
+        and m.get("visibility") == "list"
+        and isinstance(m.get("slug"), str)
+    ]
+    visible.sort(key=lambda m: (m.get("priority") if isinstance(m.get("priority"), int) else 9999, m["slug"]))
+    return [m["slug"] for m in visible]
+
+
 def check_login_status(codex_path: str) -> str:
     result = _run(
         [codex_path, "login", "status"],
@@ -667,6 +763,12 @@ def exec_once(
             with open(schema_path, "w", encoding="utf-8") as f:
                 json.dump(TRANSLATION_OUTPUT_SCHEMA, f)
             argv += ["--output-schema", schema_path]
+
+        # ユーザーの config.toml は「コーディングエージェント」向けの設定
+        # なので、翻訳に関係する部分は継承せず上書きする
+        # (_TRANSLATION_CONFIG_OVERRIDES のコメント参照)。
+        for override in _TRANSLATION_CONFIG_OVERRIDES:
+            argv += ["-c", override]
 
         if model:
             argv += ["--model", model]

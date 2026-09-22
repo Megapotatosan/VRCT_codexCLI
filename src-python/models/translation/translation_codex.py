@@ -96,6 +96,10 @@ class CodexClient:
         self.use_structured_output = bool(prompt_config.get("use_structured_output", True))
 
         self._context_history: list = []
+        # `codex debug models` の結果のキャッシュ。None は「まだ引いていない」。
+        # 接続し直したら捨てる (ログインしたアカウントで使えるモデルが
+        # 変わりうるため)。
+        self._available_models: Optional[list] = None
         self._status = codex_cli.CodexStatus()
         self._exec_semaphore = BoundedSemaphore(_MAX_CONCURRENT_EXEC)
         self._warmed_up = False
@@ -107,7 +111,12 @@ class CodexClient:
 
         副作用なし。起動時にも UI の再描画時にも安全に呼べる (項目7)。
         """
+        previous_auth = self._status.auth_mode
         self._status = codex_cli.probe_installation(self._status.executable)
+        if self._status.auth_mode != previous_auth:
+            # ログイン状態が変わったらモデル一覧を引き直す。アカウントが
+            # 変われば使えるモデルも変わりうる。
+            self._available_models = None
         return self._status
 
     def getStatus(self) -> codex_cli.CodexStatus:
@@ -160,12 +169,23 @@ class CodexClient:
     # -- モデル -------------------------------------------------------------
 
     def getModelList(self) -> list:
-        """選べるモデル (項目40)。
+        """選べるモデル。
+
+        `Automatic` は「`--model` を渡さず、ユーザーの `~/.codex/config.toml`
+        の `model` に従う」の意味。その後ろに `codex debug models` が返す
+        実際のカタログを並べる (ハードコードしないので、モデルが入れ替わっても
+        追従する)。
 
         接続できていないときに空を返すのは、`_checkTranslationEngineConnection`
         が「モデル一覧が空 = 接続失敗」として扱う既存契約に合わせるため。
         """
-        return [AUTOMATIC_MODEL] if self._status.connected else []
+        if not self._status.connected:
+            return []
+        if self._available_models is None:
+            # 一覧の取得は subprocess 1回ぶんのコストがあるので、接続確認の
+            # タイミングで1度だけ引いてキャッシュする。
+            self._available_models = codex_cli.list_models(self._status.executable) or []
+        return [AUTOMATIC_MODEL] + self._available_models
 
     def getModel(self) -> Optional[str]:
         return self.model
@@ -232,6 +252,12 @@ class CodexClient:
                 )
             )
         history_blob = "\n".join(formatted_items).strip()
+        if not history_blob:
+            # 履歴が空のときにヘッダだけ出さない。空のまま
+            # 「Conversation context (recent 5 messages)」と書くと、モデルに
+            # 存在しない文脈を探させることになり、実際に直前の発言を
+            # 訳文へ混ぜる挙動が出た。
+            return system_prompt
         if max_chars and len(history_blob) > max_chars:
             history_blob = history_blob[-max_chars:]
         history_header = header_tmpl.format(max_messages=max_messages, history=history_blob)
@@ -294,6 +320,9 @@ class CodexClient:
                 and not result.ok
                 and not result.timed_out
                 and not translation
+                # 利用上限は「schema 非対応」の証拠にならない。ここで再試行
+                # すると、上限に当たっているのに毎回2回叩くことになる。
+                and not codex_cli.is_usage_limit_error(result.stderr)
             ):
                 retry_translation, retry_result = codex_cli.exec_once(
                     codex_path,
@@ -314,10 +343,18 @@ class CodexClient:
             self._logLatency(len(text), elapsed_ms, "timeout", cold)
             raise codex_cli.CodexTranslationError("timeout", f"timeout after {elapsed_ms}ms")
         if not result.ok:
-            self._logLatency(len(text), elapsed_ms, "cli_error", cold)
-            # stderr は debug log にだけ残す。UI には出さない (項目20)。
-            printLog("Codex translation failed", f"rc={result.returncode} stderr={result.stderr.strip()[:2000]}")
-            raise codex_cli.CodexTranslationError("cli_error", f"rc={result.returncode}")
+            usage_limited = codex_cli.is_usage_limit_error(result.stderr)
+            outcome = "usage_limit" if usage_limited else "cli_error"
+            self._logLatency(len(text), elapsed_ms, outcome, cold)
+            # stderr をそのまま出さない: `codex exec` は失敗時にプロンプト
+            # 全文 (= 翻訳対象の本文と会話履歴) を stderr にエコーするため、
+            # 生のまま流すと会話内容が診断ログに残る (項目34)。
+            # safe_stderr_summary が `ERROR:` 行だけを取り出す。
+            printLog(
+                "Codex translation failed",
+                f"rc={result.returncode} {codex_cli.safe_stderr_summary(result.stderr)}",
+            )
+            raise codex_cli.CodexTranslationError(outcome, f"rc={result.returncode}")
         if not translation:
             # CLI は正常終了したがモデルが何も返さなかった。これは失敗では
             # なく「空の翻訳」として上位に渡す (他 Provider と同じ扱い)。

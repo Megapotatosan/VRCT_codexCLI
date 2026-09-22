@@ -42,21 +42,72 @@ def _connectedClient():
         auth_mode=codex_cli.AUTH_MODE_CHATGPT,
     )
     client.setModel(AUTOMATIC_MODEL)
+    # setModel は getModelList を通るのでカタログのキャッシュが埋まる。
+    # 個々のテストが `list_models` をモックしてから引き直せるよう捨てておく
+    # (捨てないと、テストが実機の CLI を叩いた結果を掴んだままになる)。
+    client._available_models = None
     return client
 
 
 class TestModelSelection(unittest.TestCase):
-    def test_connected_client_offers_automatic_only(self) -> None:
-        """第一版はモデルセレクタを作らない (項目40)。実在しないモデル名を
-        ハードコードするより、CLI の設定に従う1択のほうが正しい。"""
-        self.assertEqual(_connectedClient().getModelList(), [AUTOMATIC_MODEL])
+    """モデル一覧は `codex debug models` のカタログから組み立てる。
+
+    ここで `list_models` を必ずモックするのは、実機に Codex が入っていると
+    テストが本物の CLI を起動してしまうため (入っていなければ黙って空
+    リストになり、テストが「正しい理由ではなく偶然」通る)。
+    """
+
+    def test_catalog_models_are_offered_after_automatic(self) -> None:
+        client = _connectedClient()
+        with patch.object(codex_cli, "list_models", return_value=["gpt-6-astra", "gpt-5.5"]):
+            self.assertEqual(
+                client.getModelList(), [AUTOMATIC_MODEL, "gpt-6-astra", "gpt-5.5"]
+            )
+
+    def test_catalog_is_only_fetched_once(self) -> None:
+        """一覧取得は subprocess 1回ぶん。UI の再描画ごとに叩かない。"""
+        client = _connectedClient()
+        with patch.object(codex_cli, "list_models", return_value=["gpt-5.5"]) as mock_list:
+            client.getModelList()
+            client.getModelList()
+        mock_list.assert_called_once()
+
+    def test_automatic_still_offered_when_the_catalog_cannot_be_read(self) -> None:
+        """カタログが取れなくてもエンジンを死なせない。Automatic だけでも
+        「モデル一覧が非空 = 接続成功」の契約は満たせる。"""
+        client = _connectedClient()
+        with patch.object(codex_cli, "list_models", return_value=[]):
+            self.assertEqual(client.getModelList(), [AUTOMATIC_MODEL])
 
     def test_disconnected_client_offers_nothing(self) -> None:
         """モデル一覧が空 = 接続失敗、という既存の共通契約に合わせる。"""
-        self.assertEqual(CodexClient().getModelList(), [])
+        with patch.object(codex_cli, "list_models", return_value=["gpt-5.5"]):
+            self.assertEqual(CodexClient().getModelList(), [])
 
     def test_unknown_model_is_rejected(self) -> None:
-        self.assertFalse(_connectedClient().setModel("gpt-does-not-exist"))
+        client = _connectedClient()
+        with patch.object(codex_cli, "list_models", return_value=["gpt-5.5"]):
+            self.assertFalse(client.setModel("gpt-does-not-exist"))
+
+    def test_catalog_model_can_be_selected_and_is_passed_to_the_cli(self) -> None:
+        client = _connectedClient()
+        with patch.object(codex_cli, "list_models", return_value=["gpt-6-astra"]):
+            self.assertTrue(client.setModel("gpt-6-astra"))
+        with patch.object(codex_cli, "exec_once", return_value=("hi", _result())) as mock_exec:
+            client.translate("やあ", "Japanese", "English")
+        self.assertEqual(mock_exec.call_args.kwargs["model"], "gpt-6-astra")
+
+    def test_relogin_refetches_the_catalog(self) -> None:
+        """アカウントが変われば使えるモデルも変わりうる。"""
+        client = _connectedClient()
+        with patch.object(codex_cli, "list_models", return_value=["gpt-5.5"]):
+            client.getModelList()
+        with patch.object(codex_cli, "probe_installation",
+                          return_value=codex_cli.CodexStatus(
+                              installed=True, executable="codex", version="v",
+                              auth_mode=codex_cli.AUTH_MODE_NONE)):
+            client.probeInstallation()
+        self.assertIsNone(client._available_models)
 
     def test_automatic_model_is_not_passed_to_the_cli(self) -> None:
         """Automatic のときは --model を渡さず、ユーザーの config.toml を効かせる。"""
@@ -310,6 +361,19 @@ class TestExecArguments(unittest.TestCase):
         joined = " ".join(mock_run.call_args[0][0])
         self.assertNotIn("secret utterance", joined)
 
+    def test_translation_does_not_inherit_the_users_agent_config(self) -> None:
+        """`~/.codex/config.toml` はコーディングエージェント向けの設定。
+
+        実機では `model_reasoning_effort = "high"` と
+        `personality = "pragmatic"` が入っており、1行の翻訳に11秒かかった
+        うえ、推論モデルが訳さずに解釈していた (「校外教學」->「外科教育」)。
+        翻訳に推論もキャラクターも要らないので、継承せず必ず上書きする。
+        """
+        argv = self._argvFor()
+        overrides = [argv[i + 1] for i, a in enumerate(argv) if a == "-c"]
+        self.assertIn('model_reasoning_effort="low"', overrides)
+        self.assertIn('personality="none"', overrides)
+
     def test_translation_timeout_is_its_own_budget(self) -> None:
         """翻訳・ログイン・インストールの timeout を混ぜない (項目36)。"""
         self.assertLessEqual(codex_cli.TIMEOUT_TRANSLATE_SEC, 30)
@@ -338,6 +402,13 @@ class TestPromptConstruction(unittest.TestCase):
         self.assertIn("we are going to the event",
                       client._buildSystemPrompt("Japanese", "English"))
 
+    def test_empty_history_does_not_emit_a_context_header(self) -> None:
+        """履歴が空なのに「Conversation context (recent 5 messages)」とだけ
+        書くと、モデルに存在しない文脈を探させることになる。実機ではこれで
+        直前の発言が訳文に混ざった。"""
+        prompt = _connectedClient()._buildSystemPrompt("Chinese Traditional", "Japanese")
+        self.assertNotIn("Conversation context", prompt)
+
     def test_history_from_other_sources_is_filtered_out(self) -> None:
         client = _connectedClient()
         client.setContextHistory([
@@ -345,6 +416,98 @@ class TestPromptConstruction(unittest.TestCase):
         ])
         self.assertNotIn("should not appear",
                          client._buildSystemPrompt("Japanese", "English"))
+
+
+class TestStderrIsNotLeakedToLogs(unittest.TestCase):
+    """`codex exec` は失敗時にプロンプト全文を stderr へエコーする。
+
+    プロンプトには翻訳対象の本文と会話履歴が入っているので、stderr を生の
+    ままログへ流すと「診断ログに会話本文を書かない」(項目34) が崩れる。
+    実機のエラー出力でこれを確認したため、`ERROR:` 行だけを取り出す。
+    """
+
+    LEAKY_STDERR = (
+        "OpenAI Codex v0.155.1\n--------\nmodel: gpt-5.6-sol\n--------\n"
+        "user\nTranslate the provided text from Chinese Traditional to Japanese.\n"
+        "---\n不知道是國中生還是高中生校外教學\n"
+        "ERROR: You've hit your usage limit. Upgrade to Pro.\n"
+    )
+
+    def test_only_error_lines_survive(self) -> None:
+        summary = codex_cli.safe_stderr_summary(self.LEAKY_STDERR)
+        self.assertIn("usage limit", summary)
+        self.assertNotIn("不知道", summary)
+        self.assertNotIn("Translate the provided", summary)
+
+    def test_stderr_without_an_error_line_is_suppressed_entirely(self) -> None:
+        summary = codex_cli.safe_stderr_summary("user\n秘密の会話\n")
+        self.assertNotIn("秘密", summary)
+
+    def test_translate_failure_log_carries_no_conversation_text(self) -> None:
+        client = _connectedClient()
+        secret = "私的な会話の内容"
+        logged = []
+        with patch("models.translation.translation_codex.printLog",
+                   side_effect=lambda *a, **k: logged.append(" ".join(map(str, a)))), \
+             patch.object(codex_cli, "exec_once",
+                          return_value=("", _result(returncode=1, stderr=f"user\n{secret}\nERROR: boom"))):
+            with self.assertRaises(codex_cli.CodexTranslationError):
+                client.translate(secret, "Japanese", "English")
+        blob = "\n".join(logged)
+        self.assertNotIn(secret, blob)
+        self.assertIn("boom", blob)
+
+    def test_usage_limit_is_classified_separately(self) -> None:
+        """待てば直る失敗を、一般的な CLI エラーと混ぜない。"""
+        client = _connectedClient()
+        with patch.object(codex_cli, "exec_once",
+                          return_value=("", _result(returncode=1, stderr="ERROR: You've hit your usage limit."))):
+            with self.assertRaises(codex_cli.CodexTranslationError) as ctx:
+                client.translate("hello", "English", "Japanese")
+        self.assertEqual(ctx.exception.outcome, "usage_limit")
+
+    def test_usage_limit_does_not_trigger_the_structured_output_retry(self) -> None:
+        """上限に当たっているのに毎回2回叩かない。"""
+        client = _connectedClient()
+        calls = []
+
+        def _exec(_p, _prompt, model=None, use_structured_output=True, **kw):
+            calls.append(use_structured_output)
+            return "", _result(returncode=1, stderr="ERROR: You've hit your usage limit.")
+
+        with patch.object(codex_cli, "exec_once", side_effect=_exec):
+            with self.assertRaises(codex_cli.CodexTranslationError):
+                client.translate("hello", "English", "Japanese")
+        self.assertEqual(calls, [True])
+
+
+class TestListModels(unittest.TestCase):
+    """`codex debug models` の JSON からカタログを組み立てる部分。"""
+
+    CATALOG = {
+        "models": [
+            {"slug": "gpt-5.6-sol", "visibility": "list", "priority": 1},
+            {"slug": "gpt-6-astra", "visibility": "list", "priority": 1},
+            {"slug": "gpt-reserve", "visibility": "hide", "priority": 3},
+            {"slug": "gpt-5.5", "visibility": "list", "priority": 12},
+        ]
+    }
+
+    def test_hidden_models_are_excluded(self) -> None:
+        import json as _json
+        with patch.object(codex_cli, "_run",
+                          return_value=_result(stdout=_json.dumps(self.CATALOG))):
+            models = codex_cli.list_models("codex")
+        self.assertNotIn("gpt-reserve", models)
+        self.assertEqual(models, ["gpt-5.6-sol", "gpt-6-astra", "gpt-5.5"])
+
+    def test_unparseable_output_yields_no_models(self) -> None:
+        with patch.object(codex_cli, "_run", return_value=_result(stdout="not json")):
+            self.assertEqual(codex_cli.list_models("codex"), [])
+
+    def test_failed_command_yields_no_models(self) -> None:
+        with patch.object(codex_cli, "_run", return_value=_result(returncode=1)):
+            self.assertEqual(codex_cli.list_models("codex"), [])
 
 
 class TestLatencyLogging(unittest.TestCase):
